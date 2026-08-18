@@ -1,2 +1,22 @@
-# Dataset bruto — não versionar (121 MB+). Instruções de download em docs/.
+# Dataset bruto — não versionar (121 MB+).
+# Recupere com: python src/download_data.py
 data/raw/
+
+# Zips baixados do Kaggle / Releases
+data/*.zip
+
+# Banco DuckDB gerado pela carga — é artefato, reconstrua com src/load_raw.py
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
