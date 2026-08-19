@@ -9,6 +9,10 @@ data/*.zip
 *.duckdb
 *.duckdb.wal
 
+# Credenciais de conexão — NUNCA versionar.
+# O modelo sem senhas está em .env.example, esse sim versionado.
+.env
+
 # Python
 __pycache__/
 *.py[cod]

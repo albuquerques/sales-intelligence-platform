@@ -1,1 +1,6 @@
+# Caminho padrão (roda logo após o clone, sem servidor):
 duckdb>=1.1.0
+
+# Caminho PostgreSQL (opcional — exige um servidor rodando, ver README):
+pandas>=2.2
+psycopg[binary]>=3.2
