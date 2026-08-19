@@ -32,6 +32,7 @@ funcionam, com os mesmos problemas de qualidade preservados.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import sys
@@ -221,13 +222,28 @@ def verify_sample(con: duckdb.DuckDBPyConnection) -> bool:
     return ok
 
 
+def count_rows(path: Path) -> int:
+    """
+    Conta REGISTROS do CSV, não linhas do arquivo.
+
+    A distinção importa em olist_order_reviews_dataset.csv: os comentários dos
+    clientes contêm quebras de linha dentro de campos entre aspas, então um
+    registro pode ocupar várias linhas físicas. Contar linhas dava 104.719
+    quando o arquivo tem 99.224 registros — 5.495 a mais, e o manifesto
+    contradizia o dicionário de dados e o load_raw.py, que estavam certos.
+
+    O módulo csv respeita as aspas e junta as linhas do mesmo registro.
+    """
+    with path.open("r", encoding="utf-8", errors="replace", newline="") as f:
+        return sum(1 for _ in csv.reader(f)) - 1  # menos o cabeçalho
+
+
 def write_manifest(n_orders: int) -> None:
-    """Registra tamanho, sha256 e linhas de cada CSV bruto, para download_data.py validar."""
+    """Registra tamanho, sha256 e registros de cada CSV bruto, para download_data.py validar."""
     files = {}
     for filename in sorted(CSV.values()):
         path = RAW_DIR / filename
-        with path.open("r", encoding="utf-8", errors="replace") as f:
-            linhas = sum(1 for _ in f) - 1  # menos o cabeçalho
+        linhas = count_rows(path)
         files[filename] = {
             "bytes": path.stat().st_size,
             "rows": linhas,

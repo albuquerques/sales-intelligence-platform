@@ -57,10 +57,10 @@ erDiagram
         int product_name_lenght
         int product_description_lenght
         int product_photos_qty
-        decimal product_weight_g
-        decimal product_length_cm
-        decimal product_height_cm
-        decimal product_width_cm
+        int product_weight_g
+        int product_length_cm
+        int product_height_cm
+        int product_width_cm
     }
 
     SELLERS {

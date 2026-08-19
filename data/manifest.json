@@ -2,7 +2,7 @@
   "dataset": "Olist Brazilian E-Commerce Public Dataset",
   "source": "https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce",
   "license": "CC BY-NC-SA 4.0",
-  "generated_at": "2026-08-18T00:10:53+00:00",
+  "generated_at": "2026-08-19T20:32:18+00:00",
   "sample_orders": 3000,
   "files": {
     "olist_customers_dataset.csv": {
@@ -27,7 +27,7 @@
     },
     "olist_order_reviews_dataset.csv": {
       "bytes": 14451670,
-      "rows": 104719,
+      "rows": 99224,
       "sha256": "012b61c7593e34f51fa614efdf802b9c7056ce6aae5307ddb93236e7cfc797d7"
     },
     "olist_orders_dataset.csv": {
