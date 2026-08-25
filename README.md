@@ -108,7 +108,8 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
          sem constraint    deduplicado          fatos e dimensões
 ```
 
-**Estado atual: RAW concluída (DuckDB) + STAGING concluída (PostgreSQL).**
+**Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + dimensões da MART concluídas.**
+Falta a fact table e o dashboard.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
@@ -215,11 +216,13 @@ valer também fora deste script.
 
 ### Contraste entre as camadas
 
-| | RAW (DuckDB) | STAGING (PostgreSQL) |
-|---|---|---|
-| Tipos | tudo `VARCHAR` | `NUMERIC(10,2)`, `TIMESTAMP`, `SMALLINT` |
-| Constraints | nenhuma | 5 PK, 4 FK, 5 CHECK, `NOT NULL` |
-| Objetivo | receber o dado como ele é | garantir que ele é válido |
+| | RAW (DuckDB) | STAGING (PostgreSQL) | MART (PostgreSQL) |
+|---|---|---|---|
+| Tipos | tudo `VARCHAR` | `NUMERIC(10,2)`, `TIMESTAMP`, `SMALLINT` | idem |
+| Constraints | nenhuma | 5 PK, 4 FK, 6 CHECK | 5 PK, 6 UNIQUE, 6 CHECK |
+| Modelagem | igual à origem | igual à origem | estrela |
+| Nomes | do CSV, erros inclusive | do CSV | português |
+| Objetivo | receber o dado como ele é | garantir que ele é válido | responder perguntas |
 
 Detalhes de tipo em [`sql/02_create_postgres_tables.sql`](sql/02_create_postgres_tables.sql):
 `NUMERIC` em dinheiro (nunca `FLOAT` — ponto flutuante binário não representa
@@ -248,10 +251,13 @@ docs/
 sql/
   01_create_raw_tables.sql        camada RAW  (DuckDB)
   02_create_postgres_tables.sql   camada STAGING (PostgreSQL)
+  03_create_mart_dimensions.sql   dimensões da MART
+  04_load_mart_dimensions.sql     carga staging -> mart
 src/
   download_data.py   obtém o dataset completo
   load_raw.py        carrega os CSVs no DuckDB
   load_postgres.py   CSV -> pandas -> validação -> PostgreSQL
+  build_mart.py      staging -> mart, com verificação
   make_sample.py     regenera a amostra e o manifesto (só para manutenção)
 powerbi/
 .env.example         modelo das credenciais do PostgreSQL

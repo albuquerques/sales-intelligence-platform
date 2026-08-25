@@ -64,7 +64,8 @@ class Tabela:
     nao_nulo: tuple[str, ...]         # espelha os NOT NULL do DDL
     esperado: int                     # linhas no dataset completo
     inteiros: tuple[str, ...] = ()
-    decimais: tuple[str, ...] = ()
+    decimais: tuple[str, ...] = ()   # dinheiro: converte e nao pode ser negativo
+    reais: tuple[str, ...] = ()      # numero com sinal livre (coordenadas)
     timestamps: tuple[str, ...] = ()
     largura_fixa: tuple[tuple[str, int], ...] = ()   # (coluna, tamanho)
     dominios: dict[str, frozenset[str]] = field(default_factory=dict)
@@ -113,6 +114,24 @@ TABELAS: tuple[Tabela, ...] = (
                   "product_height_cm", "product_width_cm"),
         largura_fixa=(("product_id", 32),),
         esperado=32_951,
+    ),
+    Tabela(
+        # Entrou para a STAGING na etapa das dimensoes: dim_cliente e
+        # dim_vendedor levam latitude/longitude, e a MART le da STAGING, nunca
+        # do CSV. Se a MART lesse o arquivo direto, ela dependeria do disco em
+        # vez de depender da camada abaixo -- que e exatamente o acoplamento
+        # que a arquitetura em camadas existe para evitar.
+        nome="geolocation",
+        csv="olist_geolocation_dataset.csv",
+        colunas=("geolocation_zip_code_prefix", "geolocation_lat",
+                 "geolocation_lng", "geolocation_city", "geolocation_state"),
+        pk=(),   # a origem nao tem chave: varias coordenadas por prefixo de CEP
+        nao_nulo=("geolocation_zip_code_prefix", "geolocation_lat",
+                  "geolocation_lng", "geolocation_city", "geolocation_state"),
+        reais=("geolocation_lat", "geolocation_lng"),
+        largura_fixa=(("geolocation_zip_code_prefix", 5),
+                      ("geolocation_state", 2)),
+        esperado=1_000_163,
     ),
     Tabela(
         nome="orders",
@@ -268,7 +287,14 @@ def valida_pk(df: pd.DataFrame, t: Tabela) -> list[str]:
     """
     Chave primaria precisa ser unica. Em order_items ela e COMPOSTA
     (order_id + order_item_id): nenhuma das duas e unica sozinha, o par e.
+
+    geolocation nao tem PK nenhuma -- a origem nao tem chave, sao varias
+    amostras de coordenada por prefixo de CEP. Nao ha o que checar, e checar
+    "nada" com duplicated(subset=[]) marcaria o arquivo inteiro como duplicado.
     """
+    if not t.pk:
+        return []
+
     dup = df.duplicated(subset=list(t.pk), keep=False)
     if not dup.any():
         return []
@@ -343,6 +369,39 @@ def valida_decimais(df: pd.DataFrame, t: Tabela) -> list[str]:
     return problemas
 
 
+def valida_reais(df: pd.DataFrame, t: Tabela) -> list[str]:
+    """
+    Numero decimal que PODE ser negativo -- separado de valida_decimais porque
+    la o sinal negativo e erro (preco negativo nao existe) e aqui e o normal:
+    o Brasil inteiro tem longitude negativa, e a maior parte dele latitude
+    negativa tambem. Reusar valida_decimais rejeitaria o dataset inteiro.
+
+    Faixa checada e a GLOBAL, nao a do Brasil. As 42 coordenadas que caem fora
+    do pais sao defeito real da origem, e barra-las aqui derrubaria a carga das
+    seis tabelas por causa de 42 linhas em um milhao. Elas entram na staging e
+    sao filtradas na MART, na hora de calcular o ponto representativo do CEP.
+    """
+    problemas = []
+    for col in t.reais:
+        original = df[col]
+        convertido = pd.to_numeric(original, errors="coerce")
+        ruins = original.notna() & convertido.isna()
+        if ruins.any():
+            problemas.append(
+                f"{col}: {int(ruins.sum()):,} valores nao sao numericos. "
+                f"Ex: {_amostra(original[ruins])}"
+            )
+            continue
+        limite = 90 if col.endswith("lat") else 180
+        fora = convertido.abs() > limite
+        if fora.any():
+            problemas.append(
+                f"{col}: {int(fora.sum()):,} valores fora da faixa global "
+                f"(+/-{limite}). Ex: {_amostra(original[fora])}"
+            )
+    return problemas
+
+
 def valida_timestamps(df: pd.DataFrame, t: Tabela) -> list[str]:
     """
     Valida o FORMATO, nunca a presenca -- quem exige presenca e o NOT NULL.
@@ -407,8 +466,8 @@ def valida(df: pd.DataFrame, t: Tabela, carregados: dict[str, pd.DataFrame]) -> 
         return problemas
 
     for checagem in (valida_nao_nulo, valida_pk, valida_largura,
-                     valida_inteiros, valida_decimais, valida_timestamps,
-                     valida_dominios):
+                     valida_inteiros, valida_decimais, valida_reais,
+                     valida_timestamps, valida_dominios):
         problemas += checagem(df, t)
     problemas += valida_fks(df, t, carregados)
     return problemas
@@ -482,8 +541,9 @@ def main() -> int:
 
     # -- Etapa 2: validar tudo antes de gravar qualquer coisa ----------------
     #
-    # Validamos as 5 tabelas ANTES de abrir a conexao. E a diferenca entre
-    # descobrir o problema agora e descobri-lo com o banco meio carregado.
+    # Validamos TODAS as tabelas ANTES de abrir a conexao. E a diferenca
+    # entre descobrir o problema agora e descobri-lo com o banco meio
+    # carregado.
     print("\n[2/3] Validando")
     achados: dict[str, list[str]] = {}
     for t in TABELAS:
@@ -506,8 +566,8 @@ def main() -> int:
     if any(achados.values()):
         total = sum(len(p) for p in achados.values())
         print(f"\n{total} problema(s) encontrados. NADA foi gravado.")
-        print("A carga so acontece com as 5 tabelas integras -- carregar pela")
-        print("metade deixaria o banco num estado que ninguem sabe se pode usar.")
+        print(f"A carga so acontece com as {len(TABELAS)} tabelas integras -- carregar")
+        print("pela metade deixaria o banco num estado que ninguem sabe se pode usar.")
         return 1
 
     if args.check_only:
@@ -523,7 +583,7 @@ def main() -> int:
 
     # O 'with' do psycopg confirma (COMMIT) ao sair sem erro e desfaz
     # (ROLLBACK) se qualquer excecao escapar. E o que garante que o resultado
-    # seja binario: ou as 5 tabelas entraram, ou o banco ficou exatamente como
+    # seja binario: ou todas as tabelas entraram, ou o banco ficou como
     # estava. Nunca meio caminho -- que e justamente o defeito do load_raw.py,
     # onde cada comando e confirmado sozinho.
     with conecta() as con:

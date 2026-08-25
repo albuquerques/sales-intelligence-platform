@@ -98,6 +98,50 @@ CREATE TABLE IF NOT EXISTS staging.products (
 );
 
 -- -----------------------------------------------------------------------------
+-- GEOLOCATION — sem dependências, e a única tabela deste schema SEM chave
+-- primária.
+--
+-- Por que sem PK: a origem não tem chave. São ~1 milhão de amostras de
+-- geocodificação, várias por prefixo de CEP (mínimo 1, média 53, máximo 1.146
+-- pontos no mesmo prefixo). Inventar uma PK aqui — um id sequencial — seria
+-- criar informação que não existe no arquivo, e a STAGING não inventa dado.
+-- Reduzir para um ponto por CEP é transformação, e transformação é trabalho da
+-- camada MART.
+--
+-- Por que o CHECK é frouxo de propósito: 42 linhas têm coordenada fora do
+-- Brasil (o extremo é lat 45,07 / lng 121,11 — algum lugar da Ásia). São
+-- defeitos reais de geocodificação da origem. O CHECK aqui barra só o
+-- IMPOSSÍVEL (fora da faixa global de latitude/longitude); o IMPROVÁVEL (fora
+-- do Brasil) é filtrado na MART. Constraint garante o que não PODE existir;
+-- regra de negócio decide o que não se QUER usar. Se o CHECK fosse a caixa do
+-- Brasil, 42 linhas legítimas do arquivo derrubariam a carga inteira das seis
+-- tabelas — e o pipeline pararia por um defeito que ele deveria só contornar.
+--
+-- NUMERIC(9,6) — 6 casas decimais dão ~11 cm de precisão no equador, muito
+-- além do necessário para um prefixo de CEP que cobre um bairro inteiro. A
+-- origem traz 14 casas; o arredondamento aqui é deliberado. 9 dígitos totais
+-- menos 6 de escala = 3 antes da vírgula, que é o máximo observado (lng -101).
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS staging.geolocation (
+    geolocation_zip_code_prefix CHAR(5)      NOT NULL,
+    geolocation_lat             NUMERIC(9,6) NOT NULL,
+    geolocation_lng             NUMERIC(9,6) NOT NULL,
+    geolocation_city            VARCHAR(64)  NOT NULL,
+    geolocation_state           CHAR(2)      NOT NULL,
+
+    CONSTRAINT ck_geolocation_faixa_global CHECK (
+        geolocation_lat BETWEEN  -90 AND  90 AND
+        geolocation_lng BETWEEN -180 AND 180
+    )
+);
+
+-- Sem PK não existe índice automático. O único acesso a esta tabela é
+-- "agrupe por prefixo de CEP", feito uma vez pela MART sobre 1 milhão de
+-- linhas — sem este índice seria varredura completa toda vez.
+CREATE INDEX IF NOT EXISTS ix_geolocation_zip
+    ON staging.geolocation (geolocation_zip_code_prefix);
+
+-- -----------------------------------------------------------------------------
 -- ORDERS — depende de customers.
 --
 -- 4 das 5 colunas de data são NULL-áveis, e cada NULL significa algo:
