@@ -108,8 +108,8 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
          sem constraint    deduplicado          fatos e dimensões
 ```
 
-**Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + dimensões da MART concluídas.**
-Falta a fact table e o dashboard.
+**Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
+estrela com 5 dimensões e a fato).** Falta o dashboard.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
@@ -219,7 +219,7 @@ valer também fora deste script.
 | | RAW (DuckDB) | STAGING (PostgreSQL) | MART (PostgreSQL) |
 |---|---|---|---|
 | Tipos | tudo `VARCHAR` | `NUMERIC(10,2)`, `TIMESTAMP`, `SMALLINT` | idem |
-| Constraints | nenhuma | 5 PK, 4 FK, 6 CHECK | 5 PK, 6 UNIQUE, 6 CHECK |
+| Constraints | nenhuma | 5 PK, 4 FK, 6 CHECK | 6 PK, 7 FK, 6 UNIQUE, 9 CHECK |
 | Modelagem | igual à origem | igual à origem | estrela |
 | Nomes | do CSV, erros inclusive | do CSV | português |
 | Objetivo | receber o dado como ele é | garantir que ele é válido | responder perguntas |
@@ -238,6 +238,92 @@ tanto o `psql` quanto o `psycopg` leem sem configuração extra.
 
 ---
 
+## Camada MART — o modelo estrela
+
+```bash
+python src/build_mart.py                 # cria/atualiza dimensões + fato e verifica
+python src/build_mart.py --so-verificar  # só roda as verificações, não escreve
+```
+
+```
+              dim_data (1.828)          dim_produto (32.951)
+                       \                   /
+                        \                 /
+   dim_cliente (96.096) ── fato_vendas ── dim_vendedor (3.095)
+                             112.650      /
+                                \        /
+                          dim_status_pedido (8)
+```
+
+Os quatro arquivos SQL rodam **numa transação só**. Ou o modelo inteiro fica
+coerente, ou o schema fica exatamente como estava — uma fato gravada apontando
+para uma dimensão que não foi é o pior estado possível deste banco, porque ele
+*parece* inteiro.
+
+### O grão
+
+> Uma linha de `fato_vendas` é **um item vendido dentro de um pedido**.
+
+Essa frase decide todo o resto, e está gravada na `PRIMARY KEY (order_id,
+order_item_id)` — não só em comentário. Sem a PK, o grão é uma promessa; com
+ela, o banco rejeita qualquer carga que o viole.
+
+O grão de pedido foi descartado por um motivo estrutural: 10.578 pedidos têm
+2+ itens e 1.278 têm 2+ vendedores, então nesse grão `dim_produto` e
+`dim_vendedor` ficam **inalcançáveis** — e "faturamento por categoria" é a
+pergunta central do painel. **Custo aceito e documentado:** 775 pedidos não têm
+item nenhum (77% deles `unavailable`) e por isso não existem na fato. Contagem
+de pedidos dá 98.666, não 99.441.
+
+### Aditivo e não aditivo
+
+| Coluna | Tipo de medida | Como usar |
+|---|---|---|
+| `preco`, `frete` | aditiva | soma em qualquer combinação de dimensões |
+| `dias_entrega`, `dias_vs_previsto` | **não aditiva** | média — "total de dias de entrega" não significa nada |
+
+O Power BI põe Soma como padrão em toda coluna numérica, então marcar as duas
+últimas é cuidado ativo, não formalidade.
+
+Não existe `valor_total`: para medida aditiva, `SUM(preco) + SUM(frete)` é
+*identidade* com `SUM(preco + frete)`, e guardar a coluna criaria um segundo
+lugar onde a mesma verdade pode divergir. Não existe `quantidade`: neste grão
+ela é constante 1, e `COUNT(*)` já responde.
+
+### Três chaves de data, não seis
+
+`dim_data` aparece três vezes na fato — compra, entrega e previsão — porque é
+uma **dimensão de papéis múltiplos**. Das seis datas do dataset, três ficaram de
+fora: cada uma a mais é uma relação inativa no Power BI, que cobra
+`USERELATIONSHIP` em toda medida que a usar.
+
+Ausência de entrega (2,18% dos itens) aparece de duas formas coerentes entre si,
+e um `CHECK` obriga as duas a concordarem:
+
+- **na chave**, vira `-1` — o membro "Não informado". Com `NULL` ali, um
+  `INNER JOIN` apagaria esses itens e sumiria faturamento sem erro nenhum;
+- **na medida**, vira `NULL` — que o `AVG` ignora, e é o certo: pedido não
+  entregue não tem prazo. Gravar `0` puxaria a média para baixo e mentiria.
+
+### O que prova que a fato está certa
+
+`build_mart.py` roda **21 verificações capazes de reprovar** (mais 12
+informativas) e desfaz a transação inteira se qualquer uma falhar — modelo que
+não passou não fica gravado. As três que carregam o peso:
+
+| Verificação | Pega o quê |
+|---|---|
+| `SUM(preco)` e `SUM(frete)` **em centavos inteiros** contra a `staging` | explosão de junção — o defeito que duplica receita sem mudar nada visível |
+| viagem de volta `sk → dimensão → chave natural` vs. `staging` | apelido de `JOIN` trocado, que produz chave válida apontando para o produto errado |
+| `-1` e prazo `NULL` concordando | linha que some do filtro de data e continua contando na média |
+
+Contagem sozinha não basta: uma fato pode ter o número de linhas certo e o
+dinheiro errado. É por isso que a soma é a verificação central, e é comparada em
+centavos — em ponto flutuante, uma diferença de 0,0000001 reprovaria sem haver
+erro nenhum.
+
+---
+
 ## Estrutura
 
 ```
@@ -253,6 +339,8 @@ sql/
   02_create_postgres_tables.sql   camada STAGING (PostgreSQL)
   03_create_mart_dimensions.sql   dimensões da MART
   04_load_mart_dimensions.sql     carga staging -> mart
+  05_create_mart_fato.sql         fato_vendas: grão, 7 FKs, medidas
+  06_load_mart_fato.sql           carga da fato (chave natural -> substituta)
 src/
   download_data.py   obtém o dataset completo
   load_raw.py        carrega os CSVs no DuckDB
