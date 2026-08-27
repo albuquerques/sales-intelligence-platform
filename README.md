@@ -109,7 +109,8 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 ```
 
 **Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
-estrela com 5 dimensões e a fato).** Falta o dashboard.
+estrela com 5 dimensões e a fato) + as primeiras perguntas de negócio
+respondidas em SQL.** Falta o dashboard.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
@@ -324,6 +325,73 @@ erro nenhum.
 
 ---
 
+## As primeiras perguntas de negócio
+
+```bash
+psql -U postgres -d sales_intelligence -f sql/07_perguntas_negocio.sql
+```
+
+Oito perguntas em [`sql/07_perguntas_negocio.sql`](sql/07_perguntas_negocio.sql),
+somente leitura. É a primeira etapa que *consome* o modelo em vez de construí-lo
+— e o teste real dele: pergunta que exige contorcionismo em SQL é sintoma de
+modelagem errada, não de SQL fraco. Nenhuma exigiu.
+
+**Duas regras valem para o arquivo inteiro**, escritas no cabeçalho porque dois
+números do painel que discordam custam mais que qualquer consulta:
+
+- **Receita = `preco + frete`** (o que o cliente pagou). As parcelas aparecem
+  separadas onde a diferença importa.
+- **Dinheiro exclui cancelado, volume mostra os dois.** Receita filtra
+  `eh_venda_efetiva` — R$ 15.735.527,03 de base. P8 não filtra, porque "quanto
+  se cancela" é a própria pergunta.
+
+| | Pergunta | Resposta curta |
+|---|---|---|
+| P1 | A receita cresce? | ~2,3× de mar/17 a ago/18; pico em nov/17 (Black Friday, +53%) |
+| P2 | Quais categorias sustentam? | **17 de 74** fazem 80% da receita |
+| P3 | Quanto vale um pedido? | Ticket médio R$ 160,24 · **mediana R$ 105,28** |
+| P4 | Onde está o dinheiro? | SP+RJ+MG = 62,5%; ticket é *inverso* à concentração |
+| P5 | O cliente volta? | **97% compram uma vez só** |
+| P6 | A entrega cumpre o prazo? | AL atrasa 20,8%, SP 4,4% — mas o prazo é inflado |
+| P7 | Quanto o frete pesa? | 22,7% do preço no Norte, 15,2% no Sudeste |
+| P8 | O que não vira venda? | 0,49% dos itens — cancelamento é irrelevante aqui |
+
+### As três armadilhas que essas consultas desviam
+
+O cabeçalho do arquivo documenta as três, porque cada uma produz um número
+*plausível e errado* — o tipo que ninguém confere:
+
+- **O grão é de item.** `AVG(preco + frete)` na fato dá R$ 140,37 e parece ticket
+  médio. Não é: subestima em 12,4%, porque pedido com 3 itens é contado 3 vezes
+  pelo valor de um item. Ticket médio exige agregar por pedido *antes* da média.
+- **A série temporal tem buraco e toco.** 2016-11 não tem nenhum item e 2018-09
+  tem 1 — corte da extração, não queda de vendas. Num gráfico de linha isso vira
+  um colapso do negócio. A coluna `eh_mes_pleno` é calculada do próprio dado.
+- **8 itens são `delivered` sem data de entrega.** Toda análise de SLA usa
+  `eh_entregue` **e** `dias_entrega IS NOT NULL`, nunca só uma das duas.
+
+### Nenhuma consulta virou `VIEW`
+
+View é para consulta que se repete, e quem vai repetir é o Power BI — que ainda
+não existe. Criar view agora seria adivinhar o que ele vai pedir, e cada view é
+mais um lugar onde a regra de negócio passa a morar.
+
+### Por que não há uma segunda fact table
+
+`order_payments` e `order_reviews` seguem fora do modelo, e é decisão, não
+esquecimento: as duas estão em **grão de pedido**, e `fato_vendas` está em grão
+de item. Como coluna da fato existente seriam defeito — pagamento explodiria a
+junção (2.961 pedidos têm 2+ formas de pagamento), e nota repetida por item
+faria a média pesar cada pedido pelo número de itens que ele tem. Mereceriam
+fatos próprias, ligadas às mesmas dimensões — o padrão se chama *fact
+constellation*, e é escopo que este projeto não assumiu.
+
+O custo está medido: atraso na entrega derruba a nota de **4,29** (no prazo)
+para **1,70** (8+ dias de atraso, com 69,7% de avaliações de 1 estrela). É a
+análise mais forte que o dataset permite, e ela está fora do modelo.
+
+---
+
 ## Estrutura
 
 ```
@@ -341,6 +409,7 @@ sql/
   04_load_mart_dimensions.sql     carga staging -> mart
   05_create_mart_fato.sql         fato_vendas: grão, 7 FKs, medidas
   06_load_mart_fato.sql           carga da fato (chave natural -> substituta)
+  07_perguntas_negocio.sql        8 perguntas de negócio (somente leitura)
 src/
   download_data.py   obtém o dataset completo
   load_raw.py        carrega os CSVs no DuckDB
