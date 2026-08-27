@@ -109,8 +109,9 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 ```
 
 **Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
-estrela com 5 dimensões e a fato) + as primeiras perguntas de negócio
-respondidas em SQL.** Falta o dashboard.
+estrela com 5 dimensões e a fato) + perguntas de negócio em SQL + o modelo
+carregado e conferido dentro do Power BI.** Falta montar as páginas do
+dashboard.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
@@ -392,6 +393,74 @@ análise mais forte que o dataset permite, e ela está fora do modelo.
 
 ---
 
+## O modelo dentro do Power BI
+
+`powerbi/sales_intelligence.pbix` — as 6 tabelas da `mart` em modo **Import**,
+7 relações, `dim_data` marcada como tabela de datas e 14 medidas DAX.
+
+**A camada semântica não repete regra de negócio; ela herda.** As duas
+definições do `sql/07` (receita = `preco + frete`; dinheiro exclui cancelado)
+valem idênticas no DAX — se divergissem, o painel discordaria do arquivo que
+documenta as respostas e não haveria como saber qual está certo.
+
+### As medidas ficam em texto, não só no binário
+
+O `.pbix` é binário: o git guarda, mas não lê. Um `git diff` nele não diz nada,
+e uma medida errada entraria no histórico sem rastro. Por isso as 14 medidas
+também vivem em [`powerbi/medidas.dax`](powerbi/medidas.dax), comentadas — é o
+que se lê no GitHub, e o que permite revisar uma mudança de regra.
+
+### Como o modelo foi provado
+
+Nenhuma medida foi aceita por parecer certa. Cada uma foi conferida contra um
+número que o `build_mart.py` já tinha verificado:
+
+| Medida | Valor | Medida | Valor |
+|---|---|---|---|
+| Receita | R$ 15.735.527,03 | Itens Entregues | 110.189 |
+| Receita Mercadoria | R$ 13.494.400,74 | Prazo Médio | 12,41 dias |
+| Receita Frete | R$ 2.241.126,29 | Itens com Atraso | 7.264 |
+| Receita c/ cancelados | R$ 15.843.553,24 | % com Atraso | 6,59% |
+| Pedidos | 98.199 | Folga Média do Prazo | −12,03 dias |
+| Itens Vendidos | 112.101 | Ticket Médio | R$ 160,24 |
+| Clientes | 94.983 | Itens por Pedido | 1,14 |
+
+A primeira delas sozinha prova cinco coisas: a conexão, que as 112.650 linhas
+vieram inteiras, que a relação com `dim_status_pedido` propaga filtro, que o
+`eh_venda_efetiva` foi aplicado (senão daria 15.843.553,24) e que o
+`NUMERIC(10,2)` atravessou PostgreSQL → Npgsql → VertiPaq → DAX sem perder
+centavo.
+
+### As três decisões que a etapa exigiu
+
+**Import, não DirectQuery.** Dado congelado em out/2018 e 112 mil linhas: o
+VertiPaq comprime tudo e o DAX fica completo. DirectQuery serve para dado que
+muda e volume que não cabe — nenhum dos dois é o caso.
+
+**`mart.vw_calendario` ([`sql/08`](sql/08_create_mart_views.sql)).** O Power BI
+recusa marcar como tabela de datas uma coluna com nulos, e a `dim_data` tem um:
+o membro `-1`, criado na etapa da fato para que os itens sem entrega não sumam
+num `INNER JOIN`. A tabela mantém o membro — é destino da FK; a view o remove —
+é exigência da camada semântica. **As duas camadas querem coisas diferentes e as
+duas estão certas.** Medido antes de decidir: só `sk_data_entrega` chega ao
+`-1`, e essa é justamente a relação inativa.
+
+**Nenhuma transformação no Power Query.** Ele foi aberto uma vez, para trocar a
+*origem* de uma consulta — o que não é transformar dado. A regra continua:
+transformação mora em SQL, versionada. Dentro do `.pbix` ela ficaria trancada
+num binário.
+
+### O filtro duplo do SLA
+
+As medidas de prazo filtram `eh_entregue` **e** dependem de `dias_entrega` não
+vazio. `AVERAGE` e `COUNT` já ignoram vazio — o que resolve os 8 itens marcados
+`delivered` sem data —, mas engoliriam os **7 itens de pedidos cancelados que
+têm data de entrega**. Sem o filtro duplo, a base dá 110.196 em vez de 110.189 e
+o atraso dá 7.265 em vez de 7.264: diferença pequena o bastante para ninguém
+conferir, que é o que a torna perigosa.
+
+---
+
 ## Estrutura
 
 ```
@@ -410,6 +479,7 @@ sql/
   05_create_mart_fato.sql         fato_vendas: grão, 7 FKs, medidas
   06_load_mart_fato.sql           carga da fato (chave natural -> substituta)
   07_perguntas_negocio.sql        8 perguntas de negócio (somente leitura)
+  08_create_mart_views.sql        vw_calendario para o Power BI
 src/
   download_data.py   obtém o dataset completo
   load_raw.py        carrega os CSVs no DuckDB
@@ -417,6 +487,8 @@ src/
   build_mart.py      staging -> mart, com verificação
   make_sample.py     regenera a amostra e o manifesto (só para manutenção)
 powerbi/
+  sales_intelligence.pbix         o modelo e o painel
+  medidas.dax                     as 14 medidas em texto legível
 .env.example         modelo das credenciais do PostgreSQL
 ```
 

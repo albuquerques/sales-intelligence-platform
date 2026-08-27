@@ -1,0 +1,227 @@
+// =============================================================================
+// MEDIDAS DAX — camada semântica do Power BI
+// =============================================================================
+//
+// POR QUE ESTE ARQUIVO EXISTE
+//
+// O .pbix é um binário: o git guarda, mas não sabe ler. Um `git diff` nele não
+// diz nada, e uma medida errada entra no histórico sem deixar rastro legível.
+// Este arquivo é a fonte legível das medidas — o que um recrutador consegue ler
+// no GitHub, e o que permite revisar uma mudança de regra de negócio.
+//
+// Ele NÃO é executado por nada. É a documentação de referência do que está
+// dentro do modelo. Ao alterar uma medida no Power BI, alterar aqui também.
+//
+// COMO USAR
+//   Power BI > aba Relatório > faixa Ferramentas de Tabela > Nova Medida
+//   Cole uma medida por vez (o Power BI aceita uma por caixa de fórmula).
+//
+//
+// AS DUAS REGRAS, AS MESMAS DO sql/07_perguntas_negocio.sql
+// -----------------------------------------------------------------------------
+// Elas não são repetidas aqui por capricho: se o DAX e o SQL divergirem, o
+// painel passa a discordar do arquivo que documenta as respostas, e não há como
+// saber qual dos dois está certo.
+//
+//   1. RECEITA = preco + frete.
+//   2. DINHEIRO EXCLUI CANCELADO; VOLUME MOSTRA OS DOIS.
+//      Toda medida de dinheiro filtra dim_status_pedido[eh_venda_efetiva].
+//
+//
+// ÂNCORAS DE CONFERÊNCIA (dataset completo, medidas no SQL)
+// -----------------------------------------------------------------------------
+// Se qualquer uma destas não bater no centavo, o modelo está errado — e o erro
+// é no Power BI, porque o SQL já foi verificado pelo build_mart.py.
+//
+//   Receita ...................... R$ 15.735.527,03
+//   Receita Mercadoria ........... R$ 13.494.400,74
+//   Receita Frete ................ R$  2.241.126,29
+//   Receita (com cancelados) ..... R$ 15.843.553,24
+//   Pedidos ......................       98.199
+//   Itens Vendidos ...............      112.101
+//   Clientes .....................       94.983
+//   Ticket Médio ................. R$       160,24
+//   Itens por Pedido .............            1,14
+//   Itens Entregues ..............      110.189
+//   Prazo Médio de Entrega .......           12,41 dias
+//   Itens com Atraso .............        7.264
+//   % Entregue com Atraso ........            6,59%
+// =============================================================================
+
+
+// -----------------------------------------------------------------------------
+// 1. DINHEIRO
+// -----------------------------------------------------------------------------
+
+// A medida central do painel.
+//
+// SUM(preco) + SUM(frete), e não SUMX(fato, preco + frete). Para medida
+// ADITIVA as duas dão o mesmo resultado — é identidade, não aproximação — e a
+// primeira é uma varredura de coluna em vez de iteração linha a linha. É o
+// mesmo raciocínio que fez a coluna `valor_total` NÃO existir na fato: guardar
+// a soma criaria um segundo lugar onde a mesma verdade pode divergir.
+Receita =
+CALCULATE (
+    SUM ( fato_vendas[preco] ) + SUM ( fato_vendas[frete] ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+// As duas parcelas separadas. Existem porque a fato guardou preco e frete em
+// colunas distintas — se a etapa da fato tivesse gravado só o total, a análise
+// de peso do frete (P7) seria impossível.
+Receita Mercadoria =
+CALCULATE (
+    SUM ( fato_vendas[preco] ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+Receita Frete =
+CALCULATE (
+    SUM ( fato_vendas[frete] ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+// SEM o filtro de status. Não é para ir ao painel — é a medida de CONFERÊNCIA:
+// a diferença contra [Receita] tem de dar exatamente R$ 108.026,21, o valor dos
+// 549 itens cancelados ou indisponíveis. Se der outro número, o filtro de
+// eh_venda_efetiva parou de funcionar em algum lugar.
+Receita (com cancelados) =
+SUM ( fato_vendas[preco] ) + SUM ( fato_vendas[frete] )
+
+
+// -----------------------------------------------------------------------------
+// 2. VOLUME
+// -----------------------------------------------------------------------------
+
+// DISTINCTCOUNT sobre order_id, e não COUNTROWS.
+//
+// O GRÃO DA FATO É DE ITEM: COUNTROWS(fato_vendas) conta ITENS, não pedidos.
+// Pedido com 3 itens viraria 3. order_id está OCULTO na exibição de relatório e
+// continua funcionando aqui — ocultar não apaga.
+Pedidos =
+CALCULATE (
+    DISTINCTCOUNT ( fato_vendas[order_id] ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+// Aqui COUNTROWS é o certo, porque a pergunta É sobre itens.
+Itens Vendidos =
+CALCULATE (
+    COUNTROWS ( fato_vendas ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+// PESSOAS que compraram, não cadastros de pedido.
+//
+// Só conta porque dim_cliente foi construída no grão de customer_unique_id. No
+// grão de customer_id esta medida seria idêntica a [Pedidos] e ninguém notaria:
+// o número sairia plausível e a taxa de recorrência daria zero para sempre.
+//
+// DISTINCTCOUNT sobre a coluna DA FATO (não da dimensão) porque a pergunta é
+// "quantos clientes compraram", não "quantos existem no cadastro".
+Clientes =
+CALCULATE (
+    DISTINCTCOUNT ( fato_vendas[sk_cliente] ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+
+// -----------------------------------------------------------------------------
+// 3. DERIVADAS
+// -----------------------------------------------------------------------------
+
+// DIVIDE, nunca o operador "/". DIVIDE devolve BLANK em divisão por zero; a
+// barra devolve erro e quebra o visual inteiro — inclusive as linhas que
+// estavam certas. Num painel filtrado, denominador zero acontece toda hora.
+//
+// E repare no que esta medida NÃO é: AVERAGE(preco + frete). Aquilo daria o
+// valor médio do ITEM (R$ 140,37), não do PEDIDO. Número plausível, pergunta
+// errada — a armadilha que o P3 do sql/07 documenta.
+Ticket Médio =
+DIVIDE ( [Receita], [Pedidos] )
+
+Itens por Pedido =
+DIVIDE ( [Itens Vendidos], [Pedidos] )
+
+
+// -----------------------------------------------------------------------------
+// 4. SLA DE ENTREGA
+// -----------------------------------------------------------------------------
+//
+// ATENÇÃO — O FILTRO AQUI É DUPLO, E ISSO NÃO É EXCESSO DE ZELO.
+//
+// A origem tem duas contradições conhecidas:
+//   8 itens com status "entregue" e SEM data de entrega;
+//   7 itens de pedidos CANCELADOS e COM data de entrega.
+//
+// AVERAGE(dias_entrega) sozinho já ignora o primeiro grupo (AVERAGE descarta
+// vazio), mas engole o segundo — e o painel passaria a medir prazo de entrega
+// de venda cancelada. A diferença é pequena e por isso perigosa: base 110.196
+// em vez de 110.189, e 7.265 atrasados em vez de 7.264. Ninguém confere sete
+// linhas; todo mundo confere se o número "parece certo".
+//
+// O filtro por eh_entregue resolve, e é a mesma condição que o P6 do sql/07
+// usa. Painel e SQL precisam responder igual.
+
+// COUNT (não COUNTROWS) sobre a coluna: COUNT conta valores não vazios, então
+// os 8 sem data caem fora sozinhos.
+Itens Entregues =
+CALCULATE (
+    COUNT ( fato_vendas[dias_entrega] ),
+    dim_status_pedido[eh_entregue] = TRUE ()
+)
+
+// MÉDIA, NUNCA SOMA. dias_entrega é medida NÃO ADITIVA — "total de dias de
+// entrega" não significa nada. O padrão do Power BI para coluna numérica é
+// Soma, por isso a coluna também foi marcada como Média em Ferramentas de
+// Coluna: a medida protege o uso explícito, a propriedade protege o arrasto
+// distraído para dentro de um visual.
+Prazo Médio de Entrega =
+CALCULATE (
+    AVERAGE ( fato_vendas[dias_entrega] ),
+    dim_status_pedido[eh_entregue] = TRUE ()
+)
+
+// dias_vs_previsto é NEGATIVO quando a entrega chegou ANTES do previsto, então
+// atraso é > 0. Guardar o sinal em vez de um booleano "atrasou" foi o que
+// permitiu ter também a folga média logo abaixo.
+//
+// Vazio não entra: BLANK() > 0 é falso, então os 8 sem data saem sozinhos.
+Itens com Atraso =
+CALCULATE (
+    COUNTROWS ( fato_vendas ),
+    dim_status_pedido[eh_entregue] = TRUE (),
+    fato_vendas[dias_vs_previsto] > 0
+)
+
+% Entregue com Atraso =
+DIVIDE ( [Itens com Atraso], [Itens Entregues] )
+
+// A outra metade da pergunta de SLA, e a mais reveladora.
+//
+// Negativo = o pedido chegou antes do prazo prometido. A média nacional é de
+// -12 dias, o que quer dizer que a promessa é inflada em cerca de duas semanas.
+// Cumprir prazo que se inchou não é pontualidade — e é por isso que o Amazonas
+// aparece com 3% de atraso levando 26 dias para entregar.
+Folga Média do Prazo =
+CALCULATE (
+    AVERAGE ( fato_vendas[dias_vs_previsto] ),
+    dim_status_pedido[eh_entregue] = TRUE ()
+)
+
+
+// -----------------------------------------------------------------------------
+// 5. FORMATAÇÃO — parte da medida, não enfeite
+// -----------------------------------------------------------------------------
+//
+// Definir em Ferramentas de Medida, uma vez por medida. Sem isso o painel
+// mostra 15735527,0299999 e o leitor perde a confiança antes de ler o número.
+//
+//   Receita, Receita Mercadoria, Receita Frete,
+//   Receita (com cancelados), Ticket Médio ....... Moeda, 2 casas
+//   Pedidos, Itens Vendidos, Clientes,
+//   Itens Entregues, Itens com Atraso ............ Número inteiro, separador de milhar
+//   Ticket Médio ................................. Moeda, 2 casas
+//   Itens por Pedido ............................. Decimal, 2 casas
+//   Prazo Médio, Folga Média ..................... Decimal, 2 casas
+//   % Entregue com Atraso ........................ Porcentagem, 2 casas

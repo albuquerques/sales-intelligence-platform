@@ -48,11 +48,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # FK para as cinco dimensoes, entao o DDL dela exige que elas ja existam, e a
 # carga dela exige que elas ja estejam preenchidas (e de onde saem as chaves
 # substitutas). Tudo dentro da mesma transacao.
+#
+# O 07 nao esta aqui e nao e esquecimento: ele e o arquivo de perguntas de
+# negocio, somente leitura, e nao constroi nada. O buraco na numeracao e
+# intencional -- renumerar arquivo ja versionado quebraria os links do README.
 ETAPAS_SQL = (
     ("03_create_mart_dimensions.sql", "DDL das dimensoes"),
     ("04_load_mart_dimensions.sql",   "Carga das dimensoes"),
     ("05_create_mart_fato.sql",       "DDL da fato"),
     ("06_load_mart_fato.sql",         "Carga da fato"),
+    ("08_create_mart_views.sql",      "Views da camada semantica"),
 )
 
 
@@ -110,6 +115,18 @@ CONTAGENS = (
         "fato_vendas        linhas", "SELECT COUNT(*) FROM mart.fato_vendas", 112_650,
         "uma linha por item de pedido -- o grao declarado. Igual a contagem de "
         "staging.order_items: a fato nao inventa nem perde item",
+    ),
+    Verificacao(
+        "vw_calendario      linhas", "SELECT COUNT(*) FROM mart.vw_calendario", 1_827,
+        "a dim_data menos o membro -1. Exatamente uma linha a menos que a "
+        "tabela: se der 1.828, a view parou de filtrar e o Power BI volta a "
+        "recusar a marcacao de tabela de datas",
+    ),
+    Verificacao(
+        "vw_calendario      datas nulas",
+        "SELECT COUNT(*) FROM mart.vw_calendario WHERE data IS NULL", 0,
+        "a razao de a view existir, escrita como numero. E esta a condicao que "
+        "a validacao do Power BI cobra",
     ),
 )
 
