@@ -9,6 +9,15 @@
         "page": "2.3.1"
       },
       "type": "SharedResources"
+    },
+    "customTheme": {
+      "name": "Sales_Intelligence7011128050072791.json",
+      "reportVersionAtImport": {
+        "visual": "2.12.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
+      },
+      "type": "RegisteredResources"
     }
   },
   "objects": {
@@ -48,6 +57,17 @@
           "name": "Fluent2-CY26SU08",
           "path": "BaseThemes/Fluent2-CY26SU08.json",
           "type": "BaseTheme"
+        }
+      ]
+    },
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "Sales_Intelligence7011128050072791.json",
+          "path": "Sales_Intelligence7011128050072791.json",
+          "type": "CustomTheme"
         }
       ]
     }

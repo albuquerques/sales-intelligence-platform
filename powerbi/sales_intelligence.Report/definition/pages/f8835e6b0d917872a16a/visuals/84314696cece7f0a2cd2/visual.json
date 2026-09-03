@@ -70,6 +70,21 @@
         "isDefaultSort": true
       }
     },
-    "drillFilterOtherVisuals": true
+    "drillFilterOtherVisuals": true,
+    "objects": {
+      "title": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Receita por mês'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
   }
 }

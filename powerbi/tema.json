@@ -1,0 +1,18 @@
+{
+  "name": "Sales Intelligence",
+  "dataColors": [
+    "#1F6FB2",
+    "#E8833A",
+    "#3E9E7E",
+    "#B5495B",
+    "#7C6BA8",
+    "#C7A33B",
+    "#5B7C99",
+    "#8C6D4F"
+  ],
+  "good": "#3E9E7E",
+  "neutral": "#7A8794",
+  "bad": "#B5495B",
+  "maximum": "#1F6FB2",
+  "minimum": "#D9E4EE"
+}

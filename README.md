@@ -109,9 +109,9 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 ```
 
 **Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
-estrela com 5 dimensões e a fato) + perguntas de negócio em SQL + o modelo
-carregado e conferido dentro do Power BI.** Falta montar as páginas do
-dashboard.
+estrela com 5 dimensões e a fato) + perguntas de negócio em SQL + o painel em
+Power BI com a primeira página pronta.** Faltam as páginas de produtos e
+clientes.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
@@ -395,8 +395,8 @@ análise mais forte que o dataset permite, e ela está fora do modelo.
 
 ## O modelo dentro do Power BI
 
-`powerbi/sales_intelligence.pbix` — as 6 tabelas da `mart` em modo **Import**,
-7 relações, `dim_data` marcada como tabela de datas e 14 medidas DAX.
+`powerbi/sales_intelligence.pbip` — as 6 tabelas da `mart` em modo **Import**,
+7 relações, `dim_data` marcada como tabela de datas e 15 medidas DAX.
 
 **A camada semântica não repete regra de negócio; ela herda.** As duas
 definições do `sql/07` (receita = `preco + frete`; dinheiro exclui cancelado)
@@ -461,6 +461,69 @@ conferir, que é o que a torna perigosa.
 
 ---
 
+## O painel — página "Visão Geral"
+
+Cinco KPIs, receita e prazo médio de entrega por mês, o funil de status e o
+bloco de SLA. Recorte de **jan/2017 a ago/2018**.
+
+### De `.pbix` para PBIP: o relatório vira texto
+
+O `.pbix` é um ZIP com o modelo compilado dentro. O git guarda, mas não lê — e
+cada salvar entra inteiro no histórico. O **PBIP** (Power BI Project) é o mesmo
+relatório como pasta de texto: um `visual.json` por visual, o modelo em TMDL.
+Dá para revisar num diff, e dá para escrever direto no arquivo.
+
+Custo medido e aceito: **o PBIP não guarda os dados importados**, só a
+definição. Abrir o `.pbip` exige o PostgreSQL de pé. Por isso os dois níveis
+convivem, como já acontece entre DuckDB e PostgreSQL: o `.pbix`, versionado em
+marcos, preserva a propriedade de abrir e ver o painel sem instalar nada. Ele
+deixou de ser a fonte e passou a ser artefato de saída.
+
+### O recorte de período é uma decisão, e ela está escrita na tela
+
+A série começa em set/2016, mas nov/2016 não tem pedido nenhum e set/2018 tem
+um item. Num gráfico de linha isso desenha um colapso do negócio que nunca
+aconteceu. O painel filtra **2017-01 a 2018-08** — 349 itens e R$ 51.820,29
+fora, ou 0,33% da receita.
+
+O filtro é de **página**, não de visual: filtrar só o gráfico deixaria os
+cartões somando o dataset inteiro, e o KPI não fecharia com a linha logo
+abaixo. E é por **intervalo de datas**, não por lista de meses marcados —
+critério, não lista digitada, pelo mesmo motivo que o `eh_mes_pleno` do
+`sql/07` é calculado.
+
+O subtítulo `jan/2017 a ago/2018` existe por causa disso. Um recorte que o
+leitor não enxerga é uma afirmação sem contexto: "R$ 15,6 milhões" sem dizer de
+quando.
+
+### Ordem do eixo é informação, não estética
+
+O Power BI ordena um gráfico pela medida por padrão. Numa série temporal isso
+transforma a linha num ranking: a curva desce sempre, e a queda é artefato da
+ordenação, não do negócio — número certo, gráfico mentindo.
+
+Os dois gráficos ordenam pela coluna `ano_mes`, ascendente. Ela é `CHAR(7)` no
+formato `'2017-05'` justamente para que ordem alfabética e ordem cronológica
+sejam a mesma coisa; a decisão foi tomada na etapa das dimensões e é aqui que
+ela paga.
+
+### Formatação também produz número errado
+
+Três defeitos apareceram nesta etapa, e nenhum deles é estético:
+
+| Sintoma | Causa |
+|---|---|
+| `$ 15.683.706,74` | o botão de moeda grava o cifrão americano; símbolo é literal na máscara, e literal não se traduz |
+| `R$ 15,683,706.74` | a máscara é escrita na convenção invariante e traduzida ao desenhar — a localidade dessa tradução estava em `Automático` e resolvia para `en-US` |
+| `98 mil` | o cartão tem unidade de exibição própria, que vence a formatação da medida |
+
+Os três produzem números que *parecem* certos. O primeiro e o terceiro são
+corrigidos no arquivo versionado (`formatString` no TMDL, `labelDisplayUnits`
+no `visual.json`); o segundo é configuração da instalação e precisa ser
+repetido em cada máquina.
+
+---
+
 ## Estrutura
 
 ```
@@ -487,8 +550,12 @@ src/
   build_mart.py      staging -> mart, com verificação
   make_sample.py     regenera a amostra e o manifesto (só para manutenção)
 powerbi/
-  sales_intelligence.pbix         o modelo e o painel
-  medidas.dax                     as 14 medidas em texto legível
+  sales_intelligence.pbip            ponteiro do projeto (formato PBIP)
+  sales_intelligence.Report/         os visuais, em JSON — um arquivo por visual
+  sales_intelligence.SemanticModel/  o modelo e as medidas, em TMDL
+  sales_intelligence.pbix            o painel com os dados dentro (abre sem servidor)
+  medidas.dax                        as 15 medidas em texto comentado
+  tema.json                          a paleta, aplicada por Exibição > Temas
 .env.example         modelo das credenciais do PostgreSQL
 ```
 
