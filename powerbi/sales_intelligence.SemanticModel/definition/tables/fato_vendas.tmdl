@@ -1,0 +1,231 @@
+table fato_vendas
+	lineageTag: 9654b62e-f100-459d-843b-95366f373359
+
+	measure Receita = CALCULATE ( SUM ( fato_vendas[preco] ) + SUM ( fato_vendas[frete] ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: 53ff27a1-7627-4d88-ae3a-46e9dd7881da
+
+	measure 'Receita Mercadoria' = CALCULATE ( SUM ( fato_vendas[preco] ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: bc76a9c1-6429-435a-b028-79bf17583e29
+
+	measure 'Receita Frete' = CALCULATE ( SUM ( fato_vendas[frete] ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: 0539a267-b6b0-4c41-b1de-df1f7c5c2577
+
+	measure 'Receita (com cancelados)' = SUM ( fato_vendas[preco] ) + SUM ( fato_vendas[frete] )
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: 4c2c8064-037e-4c2d-87bf-9b75eca2fde2
+
+	measure Pedidos = CALCULATE ( DISTINCTCOUNT ( fato_vendas[order_id] ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: #,0
+		lineageTag: 8315b8e7-46de-4e7e-a72c-04038004593f
+
+	measure 'Itens Vendidos' = CALCULATE ( COUNTROWS ( fato_vendas ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: #,0
+		lineageTag: 7814e66c-a839-493c-85bc-ecc435aa6b44
+
+	measure Clientes = CALCULATE ( DISTINCTCOUNT ( fato_vendas[sk_cliente] ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: #,0
+		lineageTag: 55912b82-d66e-4b81-83f1-1d6e6ce17c03
+
+	measure 'Ticket Médio' = DIVIDE ( [Receita], [Pedidos] )
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: b9cfbc5a-6485-464a-9621-183f17fba11f
+
+	measure 'Itens Entregues' = CALCULATE ( COUNT ( fato_vendas[dias_entrega] ), dim_status_pedido[eh_entregue] = TRUE () )
+		formatString: #,0
+		lineageTag: 844144a7-b073-4fb0-b0f2-5ba742fbdc2c
+
+	measure 'Prazo Médio de Entrega' = CALCULATE ( AVERAGE ( fato_vendas[dias_entrega] ), dim_status_pedido[eh_entregue] = TRUE () )
+		formatString: 0.00
+		lineageTag: ad269205-4a97-47f4-8273-ae5c4f91c8b4
+
+	measure 'Itens com Atraso' = CALCULATE ( COUNTROWS ( fato_vendas ), dim_status_pedido[eh_entregue] = TRUE (), fato_vendas[dias_vs_previsto] > 0 )
+		formatString: #,0
+		lineageTag: 65e478b9-74e6-4a63-955f-94052ad9c26f
+
+	measure '% Entregue com Atraso' = DIVIDE ( [Itens com Atraso], [Itens Entregues] )
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: 89c7d128-f8e5-40bb-a6eb-c84d10207e87
+
+	measure 'Folga Média do Prazo' = CALCULATE ( AVERAGE ( fato_vendas[dias_vs_previsto] ), dim_status_pedido[eh_entregue] = TRUE () )
+		formatString: 0.00
+		lineageTag: 60f36c61-f07b-4d54-bca0-b9f6c546a9eb
+
+	measure 'Itens por Pedido' = DIVIDE ( [Itens Vendidos], [Pedidos] )
+		formatString: 0.00
+		lineageTag: 75fde60c-c3cb-4bcc-b870-1b875b044ee1
+
+	measure 'Itens (com cancelados)' = COUNTROWS ( fato_vendas )
+		formatString: #,0
+		lineageTag: b966c828-8f8a-46c1-81a0-6eac9c74c9e4
+
+	column order_id
+		dataType: string
+		isHidden
+		lineageTag: f04403ca-8d13-4b21-84b1-7ea40bd9346d
+		summarizeBy: none
+		sourceColumn: order_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_item_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: bd9c652d-8f70-45d3-9965-c2252e01ef7c
+		summarizeBy: none
+		sourceColumn: order_item_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = User
+
+	column sk_cliente
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 19927f7a-0246-4c0d-9baa-d58efb838e9f
+		summarizeBy: none
+		sourceColumn: sk_cliente
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column sk_produto
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 7f9ebb1a-4fda-44dc-97a6-b041ace87176
+		summarizeBy: none
+		sourceColumn: sk_produto
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column sk_vendedor
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 56d39e22-53eb-47dd-aef6-907d92755a97
+		summarizeBy: none
+		sourceColumn: sk_vendedor
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column sk_status
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: bd925bd5-2daa-4c23-a944-a26534de545e
+		summarizeBy: none
+		sourceColumn: sk_status
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column sk_data_compra
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: bfdab66d-3099-4583-b0e3-fecf9145538e
+		summarizeBy: none
+		sourceColumn: sk_data_compra
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column sk_data_entrega
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: ca846a7a-637a-4283-a25b-1a2d406ae0ef
+		summarizeBy: none
+		sourceColumn: sk_data_entrega
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = User
+
+	column sk_data_prevista
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: aa4c9012-3a3b-4f50-b618-27aa2f32a9ce
+		summarizeBy: none
+		sourceColumn: sk_data_prevista
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = User
+
+	column preco
+		dataType: double
+		lineageTag: 5e244d32-1072-4fc4-a9d6-60017bd3535d
+		summarizeBy: sum
+		sourceColumn: preco
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column frete
+		dataType: double
+		lineageTag: 71a621ba-68d8-498c-b992-07c923b30a32
+		summarizeBy: sum
+		sourceColumn: frete
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column dias_entrega
+		dataType: int64
+		formatString: 0
+		lineageTag: 8a6990df-0afc-4786-9a77-3b63ba5d3d62
+		summarizeBy: average
+		sourceColumn: dias_entrega
+
+		annotation SummarizationSetBy = User
+
+	column dias_vs_previsto
+		dataType: int64
+		formatString: 0
+		lineageTag: 71611d2e-c53c-4798-a228-b37ce5d33c8b
+		summarizeBy: average
+		sourceColumn: dias_vs_previsto
+
+		annotation SummarizationSetBy = User
+
+	column dt_carga
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		lineageTag: d0701783-aa1e-4470-9014-b8e123c82296
+		summarizeBy: none
+		sourceColumn: dt_carga
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fato_vendas = m
+		mode: import
+		source =
+				let
+				    Fonte = PostgreSQL.Database("localhost", "sales_intelligence"),
+				    mart_fato_vendas = Fonte{[Schema="mart",Item="fato_vendas"]}[Data]
+				in
+				    mart_fato_vendas
+
+	annotation PBI_ResultType = Table
+

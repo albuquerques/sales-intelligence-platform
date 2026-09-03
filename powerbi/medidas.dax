@@ -126,6 +126,23 @@ CALCULATE (
 )
 
 
+// A unica medida de volume SEM o filtro de status — e e por isso que ela existe.
+//
+// O funil de status precisa mostrar cancelado e indisponivel: "quanto se
+// cancela" e a propria pergunta que ele responde. Usar [Itens Vendidos] ali
+// daria um funil sem as duas etapas que interessam, com um numero que parece
+// certo — o defeito preferido deste dataset.
+//
+// E a regra 2 do cabecalho aplicada ao pe da letra: dinheiro exclui cancelado,
+// VOLUME MOSTRA OS DOIS. O parentese no nome segue [Receita (com cancelados)]:
+// no vocabulario deste modelo, "(com cancelados)" marca a variante sem filtro.
+//
+// Sem CALCULATE porque nao ha o que modificar no contexto: COUNTROWS puro
+// respeita o filtro que vier do visual e nada mais.
+Itens (com cancelados) =
+COUNTROWS ( fato_vendas )
+
+
 // -----------------------------------------------------------------------------
 // 3. DERIVADAS
 // -----------------------------------------------------------------------------
@@ -218,10 +235,38 @@ CALCULATE (
 // mostra 15735527,0299999 e o leitor perde a confiança antes de ler o número.
 //
 //   Receita, Receita Mercadoria, Receita Frete,
-//   Receita (com cancelados), Ticket Médio ....... Moeda, 2 casas
+//   Receita (com cancelados), Ticket Médio ....... Moeda R$, 2 casas
 //   Pedidos, Itens Vendidos, Clientes,
 //   Itens Entregues, Itens com Atraso ............ Número inteiro, separador de milhar
-//   Ticket Médio ................................. Moeda, 2 casas
 //   Itens por Pedido ............................. Decimal, 2 casas
 //   Prazo Médio, Folga Média ..................... Decimal, 2 casas
 //   % Entregue com Atraso ........................ Porcentagem, 2 casas
+//
+//
+// O SÍMBOLO DA MOEDA É LITERAL; OS SEPARADORES NÃO SÃO
+// -----------------------------------------------------------------------------
+// As 5 medidas de dinheiro nasceram com o formato padrão do botão de moeda:
+//
+//     \$#,0.00;(\$#,0.00);\$#,0.00        <- cifrão AMERICANO
+//
+// e renderizavam "$ 15.735.527,03": pontuação brasileira com símbolo errado.
+// A confusão tem uma causa concreta — as duas metades do formato obedecem a
+// regras diferentes:
+//
+//   . o SÍMBOLO é texto literal dentro da string, e literal não se traduz;
+//   . os SEPARADORES são reescritos pela cultura do modelo (pt-BR), que troca
+//     o papel do ponto e da vírgula na hora de exibir. Por isso a string
+//     continua com "#,0.00" à moda americana e a tela mostra 15.735.527,03.
+//
+// Corrigido em 02/09/2026 para:
+//
+//     "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+//
+// Aspas prendem o símbolo como literal e o "\ " é o espaço escapado, na forma
+// que o próprio Power BI escreve — assim uma edição futura pela interface não
+// gera diff falso.
+//
+// ONDE ISTO MORA AGORA: com o projeto em formato PBIP, o formato de cada medida
+// está em `sales_intelligence.SemanticModel/definition/tables/fato_vendas.tmdl`,
+// na linha `formatString:` logo abaixo do DAX. Este arquivo segue sendo a
+// versão comentada; o TMDL é a que o Power BI executa.

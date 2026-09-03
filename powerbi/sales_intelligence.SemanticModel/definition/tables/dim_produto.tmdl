@@ -1,0 +1,149 @@
+table dim_produto
+	lineageTag: b84040b5-4e97-4754-97f9-d8089cc02966
+
+	column sk_produto
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 79ff02d1-1723-4b08-8325-0496ebf7e718
+		summarizeBy: none
+		sourceColumn: sk_produto
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_id
+		dataType: string
+		isHidden
+		lineageTag: 735c10a3-a5ff-4e8c-9ea1-79d3e081f5fa
+		summarizeBy: none
+		sourceColumn: product_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column categoria
+		dataType: string
+		lineageTag: 03aba5a4-bbf1-477f-ad84-6e5acbeeb069
+		summarizeBy: none
+		sourceColumn: categoria
+
+		annotation SummarizationSetBy = Automatic
+
+	column categoria_origem
+		dataType: string
+		isHidden
+		lineageTag: 83024f1e-7987-4f17-bd0b-81e8874c4e03
+		summarizeBy: none
+		sourceColumn: categoria_origem
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column anuncio_completo
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 6b6e1910-7df3-4dcc-a488-867e08af13dd
+		summarizeBy: none
+		sourceColumn: anuncio_completo
+
+		annotation SummarizationSetBy = Automatic
+
+	column peso_g
+		dataType: int64
+		formatString: 0
+		lineageTag: 63795c43-d4e7-46c3-b674-c491732bdf82
+		summarizeBy: none
+		sourceColumn: peso_g
+
+		annotation SummarizationSetBy = User
+
+	column comprimento_cm
+		dataType: int64
+		formatString: 0
+		lineageTag: 19cd4bda-983e-473c-b2cf-63f8bcf83757
+		summarizeBy: none
+		sourceColumn: comprimento_cm
+
+		annotation SummarizationSetBy = User
+
+	column altura_cm
+		dataType: int64
+		formatString: 0
+		lineageTag: 4a15add5-ff73-42c9-b0b7-7ebe0ca8c68c
+		summarizeBy: none
+		sourceColumn: altura_cm
+
+		annotation SummarizationSetBy = User
+
+	column largura_cm
+		dataType: int64
+		formatString: 0
+		lineageTag: bf8d97ec-43bd-4388-b831-c7e89bacaf15
+		summarizeBy: none
+		sourceColumn: largura_cm
+
+		annotation SummarizationSetBy = User
+
+	column volume_cm3
+		dataType: int64
+		formatString: 0
+		lineageTag: 92abcb32-4bd3-439f-96ad-8b24d773785e
+		summarizeBy: none
+		sourceColumn: volume_cm3
+
+		annotation SummarizationSetBy = User
+
+	column qtd_fotos
+		dataType: int64
+		formatString: 0
+		lineageTag: 5020610e-c1c3-4467-9c82-9a83eb09c51f
+		summarizeBy: sum
+		sourceColumn: qtd_fotos
+
+		annotation SummarizationSetBy = Automatic
+
+	column tam_nome
+		dataType: int64
+		formatString: 0
+		lineageTag: 92a7c68a-a5b9-493d-bfb2-07cfc830ecdd
+		summarizeBy: none
+		sourceColumn: tam_nome
+
+		annotation SummarizationSetBy = User
+
+	column tam_descricao
+		dataType: int64
+		formatString: 0
+		lineageTag: bce396ad-80c4-4d72-8a37-9cf0a6acf4f6
+		summarizeBy: none
+		sourceColumn: tam_descricao
+
+		annotation SummarizationSetBy = User
+
+	column dt_carga
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		lineageTag: 359412da-7c7f-4310-8569-0440e00e9fdd
+		summarizeBy: none
+		sourceColumn: dt_carga
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_produto = m
+		mode: import
+		source =
+				let
+				    Fonte = PostgreSQL.Database("localhost", "sales_intelligence"),
+				    mart_dim_produto = Fonte{[Schema="mart",Item="dim_produto"]}[Data]
+				in
+				    mart_dim_produto
+
+	annotation PBI_ResultType = Table
+

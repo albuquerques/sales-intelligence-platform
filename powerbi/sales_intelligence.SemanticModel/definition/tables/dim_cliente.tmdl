@@ -1,0 +1,111 @@
+table dim_cliente
+	lineageTag: 0d9f0b8f-3f8b-4d44-9949-ba993b15fa0f
+
+	column sk_cliente
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 59bdd34c-f194-4742-abc4-eeacc4492769
+		summarizeBy: none
+		sourceColumn: sk_cliente
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_unique_id
+		dataType: string
+		isHidden
+		lineageTag: 1db79dda-93c7-4e93-b02b-6495fc51b938
+		summarizeBy: none
+		sourceColumn: customer_unique_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column cep_prefixo
+		dataType: string
+		lineageTag: 82486795-b137-4fa8-8882-62874e9f93b5
+		summarizeBy: none
+		sourceColumn: cep_prefixo
+
+		annotation SummarizationSetBy = Automatic
+
+	column cidade
+		dataType: string
+		lineageTag: 31c0d53a-e0bc-45d4-9828-ab0f55818b0b
+		summarizeBy: none
+		sourceColumn: cidade
+
+		annotation SummarizationSetBy = Automatic
+
+	column estado
+		dataType: string
+		lineageTag: 553622a2-0071-468f-baf8-3c0c3cac38bc
+		summarizeBy: none
+		sourceColumn: estado
+
+		annotation SummarizationSetBy = Automatic
+
+	column latitude
+		dataType: double
+		lineageTag: 833a379d-76e8-495f-9e75-10fd8ea8b189
+		summarizeBy: none
+		sourceColumn: latitude
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column longitude
+		dataType: double
+		lineageTag: a23a69e9-31ae-49e9-91bf-27470fd625e8
+		summarizeBy: none
+		sourceColumn: longitude
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column qtd_pedidos
+		dataType: int64
+		formatString: 0
+		lineageTag: 5d110dc4-cf17-4c0c-98f5-60db258aac14
+		summarizeBy: sum
+		sourceColumn: qtd_pedidos
+
+		annotation SummarizationSetBy = Automatic
+
+	column eh_recorrente
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: cd82ae01-b8b5-4887-aca2-af8fcb47a2ac
+		summarizeBy: none
+		sourceColumn: eh_recorrente
+
+		annotation SummarizationSetBy = Automatic
+
+	column dt_carga
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		lineageTag: 1d2cb6e2-2084-47b2-9039-e88e9cc1360d
+		summarizeBy: none
+		sourceColumn: dt_carga
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_cliente = m
+		mode: import
+		source =
+				let
+				    Fonte = PostgreSQL.Database("localhost", "sales_intelligence"),
+				    mart_dim_cliente = Fonte{[Schema="mart",Item="dim_cliente"]}[Data]
+				in
+				    mart_dim_cliente
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,44 @@
+relationship bdbc9b27-3667-4eb5-ae5b-2315a2ff781f
+	fromColumn: fato_vendas.sk_cliente
+	toColumn: dim_cliente.sk_cliente
+
+	annotation PBI_IsFromSource = FS
+
+relationship 02aa7aa8-2ee1-48ad-9dde-ca03ece3fc27
+	fromColumn: fato_vendas.sk_data_compra
+	toColumn: dim_data.sk_data
+
+	annotation PBI_IsFromSource = FS
+
+relationship 728ca453-d9b6-4061-a787-7ef6e74e21ae
+	isActive: false
+	fromColumn: fato_vendas.sk_data_entrega
+	toColumn: dim_data.sk_data
+
+	annotation PBI_IsFromSource = FS
+
+relationship 28bf9d2e-f44e-4a64-8d46-b3635ee03f1e
+	isActive: false
+	fromColumn: fato_vendas.sk_data_prevista
+	toColumn: dim_data.sk_data
+
+	annotation PBI_IsFromSource = FS
+
+relationship ff011e49-4826-4a03-acaf-e655ba5fdd4d
+	fromColumn: fato_vendas.sk_produto
+	toColumn: dim_produto.sk_produto
+
+	annotation PBI_IsFromSource = FS
+
+relationship 4f5bf5ef-c8de-4864-87b8-ed368ffcd749
+	fromColumn: fato_vendas.sk_status
+	toColumn: dim_status_pedido.sk_status
+
+	annotation PBI_IsFromSource = FS
+
+relationship 9308b517-c24c-4522-92e7-8b3b820c264d
+	fromColumn: fato_vendas.sk_vendedor
+	toColumn: dim_vendedor.sk_vendedor
+
+	annotation PBI_IsFromSource = FS
+

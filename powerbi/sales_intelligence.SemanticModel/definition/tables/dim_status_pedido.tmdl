@@ -1,0 +1,75 @@
+table dim_status_pedido
+	lineageTag: 97cc0eb2-a318-49bb-9136-4f2ca64274be
+
+	column sk_status
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: a2be112c-522b-4d86-8f84-39100e19b52e
+		summarizeBy: none
+		sourceColumn: sk_status
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column status_origem
+		dataType: string
+		isHidden
+		lineageTag: 8a111d3a-c84d-4aef-87e1-b7c8908bb0e2
+		summarizeBy: none
+		sourceColumn: status_origem
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column status
+		dataType: string
+		lineageTag: 2c385d70-222a-4e2e-8773-feb357426b33
+		summarizeBy: none
+		sourceColumn: status
+		sortByColumn: ordem_funil
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column ordem_funil
+		dataType: int64
+		formatString: 0
+		lineageTag: 794c0b68-5c68-4523-ac37-d03df17a8331
+		summarizeBy: none
+		sourceColumn: ordem_funil
+
+		annotation SummarizationSetBy = Automatic
+
+	column eh_venda_efetiva
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 43caa66c-51c2-4d15-946a-9addad72cb4e
+		summarizeBy: none
+		sourceColumn: eh_venda_efetiva
+
+		annotation SummarizationSetBy = Automatic
+
+	column eh_entregue
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: c59c5edd-5613-4365-91b4-3776493b3366
+		summarizeBy: none
+		sourceColumn: eh_entregue
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_status_pedido = m
+		mode: import
+		source =
+				let
+				    Fonte = PostgreSQL.Database("localhost", "sales_intelligence"),
+				    mart_dim_status_pedido = Fonte{[Schema="mart",Item="dim_status_pedido"]}[Data]
+				in
+				    mart_dim_status_pedido
+
+	annotation PBI_ResultType = Table
+

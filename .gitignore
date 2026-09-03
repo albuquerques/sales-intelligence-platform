@@ -24,3 +24,10 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+
+# Pastas de trabalho do formato PBIP (Power BI Project).
+# O `.pbi/` guarda cache de dados (`cache.abf`, ~11 MB, regenerado sozinho) e
+# `localSettings.json` com CAMINHOS ABSOLUTOS da maquina. Versionar o primeiro
+# repete o problema do binario que o PBIP veio resolver; versionar o segundo
+# gera conflito a cada troca entre o notebook e o PC.
+**/.pbi/

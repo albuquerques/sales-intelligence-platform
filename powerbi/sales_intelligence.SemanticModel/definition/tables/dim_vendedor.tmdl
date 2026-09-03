@@ -1,0 +1,93 @@
+table dim_vendedor
+	lineageTag: 0aed9f2b-80b6-4420-9ec2-6b5dfc681737
+
+	column sk_vendedor
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 0114c9f1-f1ff-477f-99a9-86a99e32f6fe
+		summarizeBy: none
+		sourceColumn: sk_vendedor
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column seller_id
+		dataType: string
+		isHidden
+		lineageTag: c24bb16f-73ad-40b9-b4e8-88cff0bb9616
+		summarizeBy: none
+		sourceColumn: seller_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column cep_prefixo
+		dataType: string
+		lineageTag: 089325a1-647b-4c27-a50e-6957dd7ef86c
+		summarizeBy: none
+		sourceColumn: cep_prefixo
+
+		annotation SummarizationSetBy = Automatic
+
+	column cidade
+		dataType: string
+		lineageTag: 9caa55be-7ff1-4fe5-a221-926734b1d84c
+		summarizeBy: none
+		sourceColumn: cidade
+
+		annotation SummarizationSetBy = Automatic
+
+	column estado
+		dataType: string
+		lineageTag: 975c896e-abc1-40b2-ac0d-21b46287209b
+		summarizeBy: none
+		sourceColumn: estado
+
+		annotation SummarizationSetBy = Automatic
+
+	column latitude
+		dataType: double
+		lineageTag: 539989e4-92aa-45b7-9fa2-bafe021c26bc
+		summarizeBy: none
+		sourceColumn: latitude
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column longitude
+		dataType: double
+		lineageTag: e52b29a3-5c72-4865-a949-c02241f9aab3
+		summarizeBy: none
+		sourceColumn: longitude
+
+		annotation SummarizationSetBy = User
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column dt_carga
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		lineageTag: 84296ce5-d812-4ab7-91f1-764a9042b9c3
+		summarizeBy: none
+		sourceColumn: dt_carga
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_vendedor = m
+		mode: import
+		source =
+				let
+				    Fonte = PostgreSQL.Database("localhost", "sales_intelligence"),
+				    mart_dim_vendedor = Fonte{[Schema="mart",Item="dim_vendedor"]}[Data]
+				in
+				    mart_dim_vendedor
+
+	annotation PBI_ResultType = Table
+
