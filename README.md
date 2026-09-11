@@ -110,8 +110,8 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 
 **Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
 estrela com 5 dimensões e a fato) + perguntas de negócio em SQL + o painel em
-Power BI com as três páginas — Visão Geral, Produtos e Clientes.** Falta o
-acabamento final do dashboard.
+Power BI com as três páginas — Visão Geral, Produtos e Clientes.** O painel
+está fechado; o que resta é organização do repositório e documentação.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 

@@ -108,7 +108,14 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Estados com menos de 200 entregas têm média instável — RR 45, AP 81, AM 163'"
                 }
               }
             }
