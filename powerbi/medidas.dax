@@ -314,7 +314,70 @@ RETURN
 
 
 // -----------------------------------------------------------------------------
-// 6. FORMATAÇÃO — parte da medida, não enfeite
+// 6. CLIENTES — medidas da terceira página
+// -----------------------------------------------------------------------------
+//
+// ÂNCORAS (período de 2017-01 a 2018-08):
+//
+//   Clientes .............  94.703      Taxa de Recorrência ...   3,03%
+//   Clientes Recorrentes .   2.874      Receita por Cliente ... R$ 165,61
+
+// POR QUE ESTA MEDIDA EXISTE, SE A DIMENSÃO JÁ TEM A RESPOSTA
+//
+// A dim_cliente traz uma coluna `eh_recorrente`, calculada na carga. Usá-la
+// seria uma linha de DAX e estaria ERRADO: ela foi computada sobre o dataset
+// INTEIRO e responde 2.997 — ignorando o filtro de período da página, onde o
+// número certo é 2.874. Um KPI que ignora em silêncio o filtro da própria
+// página é o mesmo padrão que este projeto evita desde a camada RAW.
+//
+// A coluna continua útil, para outra coisa: SEGMENTAR (novos × recorrentes num
+// slicer), onde ignorar o período é o comportamento desejado.
+//
+// COMO ELA FUNCIONA
+//
+//   VALUES ( sk_cliente )  ..... a lista de clientes do contexto atual
+//   FILTER ( ... )        ...... percorre essa lista, um cliente por vez
+//   CALCULATE ( ... )     ...... o de DENTRO é o que faz o trabalho: ele
+//                                dispara TRANSIÇÃO DE CONTEXTO, transformando
+//                                "a linha do cliente X" em "filtro pelo
+//                                cliente X". Sem ele, DISTINCTCOUNT contaria
+//                                os pedidos de TODOS os clientes em cada
+//                                iteração, e o resultado seria 94.703 ou 0.
+//
+// É o DAX mais denso do projeto junto com [% Acumulado], e pela mesma razão:
+// os dois precisam avaliar uma medida por linha de um conjunto.
+Clientes Recorrentes =
+CALCULATE (
+    COUNTROWS (
+        FILTER (
+            VALUES ( fato_vendas[sk_cliente] ),
+            CALCULATE ( DISTINCTCOUNT ( fato_vendas[order_id] ) ) >= 2
+        )
+    ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+Taxa de Recorrência =
+DIVIDE ( [Clientes Recorrentes], [Clientes] )
+
+// Par deliberado com [Ticket Médio], e os dois ficam lado a lado na página:
+//
+//   Receita por Cliente .... R$ 165,61      (divide por PESSOA)
+//   Ticket Médio ........... R$ 160,19      (divide por PEDIDO)
+//
+// A DIFERENÇA ENTRE OS DOIS É A RECORRÊNCIA. Se ninguém comprasse duas vezes,
+// seriam idênticos — e R$ 5,42 é o tamanho inteiro do efeito num negócio onde
+// 97% dos clientes compram uma vez só.
+//
+// Só faz sentido porque dim_cliente está no grão de customer_unique_id. No
+// grão de customer_id, [Clientes] seria igual a [Pedidos] e esta medida seria
+// uma cópia de [Ticket Médio] — número plausível, informação nenhuma.
+Receita por Cliente =
+DIVIDE ( [Receita], [Clientes] )
+
+
+// -----------------------------------------------------------------------------
+// 7. FORMATAÇÃO — parte da medida, não enfeite
 // -----------------------------------------------------------------------------
 //
 // Definir em Ferramentas de Medida, uma vez por medida. Sem isso o painel

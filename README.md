@@ -110,7 +110,8 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 
 **Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
 estrela com 5 dimensões e a fato) + perguntas de negócio em SQL + o painel em
-Power BI com as páginas Visão Geral e Produtos.** Falta a página de clientes.
+Power BI com as três páginas — Visão Geral, Produtos e Clientes.** Falta o
+acabamento final do dashboard.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
@@ -395,7 +396,7 @@ análise mais forte que o dataset permite, e ela está fora do modelo.
 ## O modelo dentro do Power BI
 
 `powerbi/sales_intelligence.pbip` — as 6 tabelas da `mart` em modo **Import**,
-7 relações, `dim_data` marcada como tabela de datas e 20 medidas DAX.
+7 relações, `dim_data` marcada como tabela de datas e 23 medidas DAX.
 
 **A camada semântica não repete regra de negócio; ela herda.** As duas
 definições do `sql/07` (receita = `preco + frete`; dinheiro exclui cancelado)
@@ -588,6 +589,95 @@ colunas distintas. Com um único `valor_total` gravado, ela seria impossível.
 
 ---
 
+## A página de Clientes
+
+Quem compra, onde está e em quanto tempo recebe.
+
+### 97% compram uma vez e não voltam
+
+```
+1 pedido .... 91.829 clientes .... 96,97%
+2 pedidos ....  2.639 ............  2,79%
+3 ou mais ......  235 ............  0,25%
+```
+
+Esse número não vira gráfico: seria uma barra gigante e três invisíveis. Ele é
+cartão e coluna de tabela.
+
+O par `Receita por Cliente` (R$ 165,61) e `Ticket Médio` (R$ 160,19) está na
+mesma linha de KPIs de propósito: **a diferença entre os dois é a recorrência**.
+Se ninguém comprasse duas vezes, seriam o mesmo número. R$ 5,42 é o tamanho
+inteiro do efeito.
+
+### Por que a recorrência é medida em DAX, e não lida da dimensão
+
+A `dim_cliente` já traz uma coluna `eh_recorrente`, calculada na carga. Usá-la
+seria trivial e estaria **errado**: ela foi calculada sobre o dataset inteiro e
+responderia `2.997`, ignorando o filtro de período da página, enquanto todo o
+resto mostra `2.874`.
+
+Um KPI que ignora em silêncio o filtro da própria página é o mesmo padrão que
+este projeto vem evitando desde a camada RAW. A medida recalcula:
+
+```dax
+Clientes Recorrentes =
+CALCULATE (
+    COUNTROWS (
+        FILTER (
+            VALUES ( fato_vendas[sk_cliente] ),
+            CALCULATE ( DISTINCTCOUNT ( fato_vendas[order_id] ) ) >= 2
+        )
+    ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+```
+
+O `CALCULATE` de dentro faz **transição de contexto**: para cada cliente da
+iteração, recalcula quantos pedidos distintos ele tem naquele contexto. A
+coluna da dimensão continua útil para outra coisa — **segmentar** novos contra
+recorrentes num slicer, onde ignorar o período é o comportamento desejado.
+
+### A promessa de prazo é calibrada ao contrário
+
+```
+       prazo    atraso    folga do prazo
+AL ... 24,4 d    20,9%        -8,7
+PA ... 23,7 d    11,4%       -14,1
+SP ....8,6 d      4,4%       -11,2
+PR ... 11,9 d     3,9%       -13,3
+```
+
+Alagoas demora três vezes o que São Paulo demora e atrasa cinco vezes mais. Mas
+o achado está na última coluna: a folga de AL é de **8,7 dias**, menor que a do
+Paraná (**13,3**). **O estado que mais precisa de prazo folgado é o que menos
+recebe** — a promessa é mais apertada justamente onde a operação é pior.
+
+Cumprir prazo inflado não é pontualidade, e o inverso também vale: o atraso de
+AL é em parte uma promessa mal calibrada.
+
+> **Ressalva estatística:** as três piores posições do gráfico são estados de
+> volume mínimo — RR tem 45 itens entregues, AP tem 81, AM tem 163. A média é
+> real, mas apoiada em pouca observação. Alagoas, com 426, é o primeiro em que
+> o número tem peso.
+
+### O frete aparece de novo, agora como distância
+
+```
+SP ....  8,64 dias  ·  ticket R$ 142,97
+RJ .... 15,06 dias  ·  ticket R$ 166,37
+BA .... 19,19 dias  ·  ticket R$ 181,44
+```
+
+Quanto mais longe, maior o ticket — e não é porque o interior compra produtos
+mais caros. `Ticket Médio` inclui frete, e frete cresce com a distância. O
+cliente distante paga mais pelo mesmo carrinho e espera mais tempo por ele.
+
+Na página de Produtos o frete explicava a diferença entre categorias
+(densidade de valor); aqui explica a diferença entre estados (distância). É o
+mesmo eixo visto de dois ângulos.
+
+---
+
 ## Estrutura
 
 ```
@@ -618,7 +708,7 @@ powerbi/
   sales_intelligence.Report/         os visuais, em JSON — um arquivo por visual
   sales_intelligence.SemanticModel/  o modelo e as medidas, em TMDL
   sales_intelligence.pbix            o painel com os dados dentro (abre sem servidor)
-  medidas.dax                        as 20 medidas em texto comentado
+  medidas.dax                        as 23 medidas em texto comentado
   tema.json                          a paleta, aplicada por Exibição > Temas
 .env.example         modelo das credenciais do PostgreSQL
 ```

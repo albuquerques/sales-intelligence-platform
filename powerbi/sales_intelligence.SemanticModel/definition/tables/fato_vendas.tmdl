@@ -77,6 +77,18 @@ table fato_vendas
 		formatString: 0.0%;-0.0%;0.0%
 		lineageTag: 028b7da2-2c54-4d06-8dc3-7b0ace2cac1d
 
+	measure 'Clientes Recorrentes' = CALCULATE ( COUNTROWS ( FILTER ( VALUES ( fato_vendas[sk_cliente] ), CALCULATE ( DISTINCTCOUNT ( fato_vendas[order_id] ) ) >= 2 ) ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: #,0
+		lineageTag: a0052a4f-863a-4f4c-a894-84ce1bd9a4e3
+
+	measure 'Taxa de Recorrência' = DIVIDE ( [Clientes Recorrentes], [Clientes] )
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: ef9a56be-f16a-490f-9fa7-678696255e2f
+
+	measure 'Receita por Cliente' = DIVIDE ( [Receita], [Clientes] )
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: c5cdab10-3884-41b7-a016-eee5b6fecbec
+
 	measure 'Itens (com cancelados)' = COUNTROWS ( fato_vendas )
 		formatString: #,0
 		lineageTag: b966c828-8f8a-46c1-81a0-6eac9c74c9e4

@@ -1,6 +1,6 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "ab6cf35833452c69ed2b",
+  "name": "fa13d5d0b972c350102e",
   "position": {
     "x": 1260,
     "y": 300,
@@ -10,7 +10,7 @@
     "tabOrder": 11
   },
   "visual": {
-    "visualType": "lineClusteredColumnComboChart",
+    "visualType": "barChart",
     "query": {
       "queryState": {
         "Category": {
@@ -20,14 +20,14 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "dim_produto"
+                      "Entity": "dim_cliente"
                     }
                   },
-                  "Property": "categoria"
+                  "Property": "estado"
                 }
               },
-              "queryRef": "dim_produto.categoria",
-              "nativeQueryRef": "categoria",
+              "queryRef": "dim_cliente.estado",
+              "nativeQueryRef": "estado",
               "active": true
             }
           ]
@@ -42,29 +42,11 @@
                       "Entity": "fato_vendas"
                     }
                   },
-                  "Property": "% Frete"
+                  "Property": "Receita"
                 }
               },
-              "queryRef": "fato_vendas.% Frete",
-              "nativeQueryRef": "% Frete"
-            }
-          ]
-        },
-        "Y2": {
-          "projections": [
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "fato_vendas"
-                    }
-                  },
-                  "Property": "Preço Médio Item"
-                }
-              },
-              "queryRef": "fato_vendas.Preço Médio Item",
-              "nativeQueryRef": "Preço Médio Item"
+              "queryRef": "fato_vendas.Receita",
+              "nativeQueryRef": "Receita"
             }
           ]
         }
@@ -79,7 +61,7 @@
                     "Entity": "fato_vendas"
                   }
                 },
-                "Property": "% Frete"
+                "Property": "Receita"
               }
             },
             "direction": "Descending"
@@ -95,7 +77,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Frete pesa mais onde o item é barato'"
+                  "Value": "'Receita pelos 10 maiores estados'"
                 }
               }
             }
@@ -121,15 +103,15 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "224a63b36cc33b4d4bc3",
+        "name": "167fb8b3f181a8880f14",
         "field": {
           "Column": {
             "Expression": {
               "SourceRef": {
-                "Entity": "dim_produto"
+                "Entity": "dim_cliente"
               }
             },
-            "Property": "categoria"
+            "Property": "estado"
           }
         },
         "type": "TopN",
@@ -147,7 +129,7 @@
                     "From": [
                       {
                         "Name": "d",
-                        "Entity": "dim_produto",
+                        "Entity": "dim_cliente",
                         "Type": 0
                       },
                       {
@@ -164,7 +146,7 @@
                               "Source": "d"
                             }
                           },
-                          "Property": "categoria"
+                          "Property": "estado"
                         },
                         "Name": "field"
                       }
@@ -191,7 +173,7 @@
             },
             {
               "Name": "d",
-              "Entity": "dim_produto",
+              "Entity": "dim_cliente",
               "Type": 0
             }
           ],
@@ -207,7 +189,7 @@
                             "Source": "d"
                           }
                         },
-                        "Property": "categoria"
+                        "Property": "estado"
                       }
                     }
                   ],

@@ -1,0 +1,121 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "b5030c6bb7fe6b9626a8",
+  "position": {
+    "x": 40,
+    "y": 300,
+    "z": 10,
+    "height": 420,
+    "width": 1200,
+    "tabOrder": 10
+  },
+  "visual": {
+    "visualType": "lineClusteredColumnComboChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_cliente"
+                    }
+                  },
+                  "Property": "estado"
+                }
+              },
+              "queryRef": "dim_cliente.estado",
+              "nativeQueryRef": "estado",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "Prazo Médio de Entrega"
+                }
+              },
+              "queryRef": "fato_vendas.Prazo Médio de Entrega",
+              "nativeQueryRef": "Prazo Médio de Entrega"
+            }
+          ]
+        },
+        "Y2": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "% Entregue com Atraso"
+                }
+              },
+              "queryRef": "fato_vendas.% Entregue com Atraso",
+              "nativeQueryRef": "% Entregue com Atraso"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fato_vendas"
+                  }
+                },
+                "Property": "Prazo Médio de Entrega"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Prazo de entrega por estado — e quanto disso vira atraso'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
