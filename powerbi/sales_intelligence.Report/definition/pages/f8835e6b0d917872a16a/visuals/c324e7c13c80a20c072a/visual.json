@@ -4,10 +4,10 @@
   "position": {
     "x": 1260,
     "y": 300,
-    "z": 12,
+    "z": 3000,
     "height": 420,
     "width": 620,
-    "tabOrder": 12
+    "tabOrder": 3000
   },
   "visual": {
     "visualType": "barChart",
@@ -70,8 +70,7 @@
         "isDefaultSort": true
       }
     },
-    "drillFilterOtherVisuals": true,
-    "objects": {
+    "visualContainerObjects": {
       "title": [
         {
           "properties": {
@@ -84,7 +83,21 @@
             }
           }
         }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
   }
 }

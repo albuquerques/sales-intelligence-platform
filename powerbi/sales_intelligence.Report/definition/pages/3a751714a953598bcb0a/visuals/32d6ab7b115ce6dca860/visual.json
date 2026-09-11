@@ -1,12 +1,12 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "7f955cf36f9163853238",
+  "name": "32d6ab7b115ce6dca860",
   "position": {
-    "x": 1260,
-    "y": 750,
+    "x": 1528,
+    "y": 130,
     "z": 4000,
-    "height": 90,
-    "width": 620,
+    "height": 140,
+    "width": 352,
     "tabOrder": 4000
   },
   "visual": {
@@ -23,11 +23,11 @@
                       "Entity": "fato_vendas"
                     }
                   },
-                  "Property": "Itens Entregues"
+                  "Property": "% Frete"
                 }
               },
-              "queryRef": "fato_vendas.Itens Entregues",
-              "nativeQueryRef": "Itens Entregues"
+              "queryRef": "fato_vendas.% Frete",
+              "nativeQueryRef": "% Frete"
             }
           ]
         }

@@ -1,0 +1,196 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "0933d5b6843ff0089a9a",
+  "position": {
+    "x": 40,
+    "y": 750,
+    "z": 12,
+    "height": 290,
+    "width": 1840,
+    "tabOrder": 12
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_produto"
+                    }
+                  },
+                  "Property": "categoria"
+                }
+              },
+              "queryRef": "dim_produto.categoria",
+              "nativeQueryRef": "categoria"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "Receita"
+                }
+              },
+              "queryRef": "fato_vendas.Receita",
+              "nativeQueryRef": "Receita"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "% Acumulado"
+                }
+              },
+              "queryRef": "fato_vendas.% Acumulado",
+              "nativeQueryRef": "% Acumulado"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "Receita Mercadoria"
+                }
+              },
+              "queryRef": "fato_vendas.Receita Mercadoria",
+              "nativeQueryRef": "Receita Mercadoria"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "Receita Frete"
+                }
+              },
+              "queryRef": "fato_vendas.Receita Frete",
+              "nativeQueryRef": "Receita Frete"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "% Frete"
+                }
+              },
+              "queryRef": "fato_vendas.% Frete",
+              "nativeQueryRef": "% Frete"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "Itens Vendidos"
+                }
+              },
+              "queryRef": "fato_vendas.Itens Vendidos",
+              "nativeQueryRef": "Itens Vendidos"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "Produtos Vendidos"
+                }
+              },
+              "queryRef": "fato_vendas.Produtos Vendidos",
+              "nativeQueryRef": "Produtos Vendidos"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fato_vendas"
+                    }
+                  },
+                  "Property": "Preço Médio Item"
+                }
+              },
+              "queryRef": "fato_vendas.Preço Médio Item",
+              "nativeQueryRef": "Preço Médio Item"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fato_vendas"
+                  }
+                },
+                "Property": "Receita"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'As 74 categorias — 18 delas somam 80% da receita'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

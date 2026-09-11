@@ -228,7 +228,93 @@ CALCULATE (
 
 
 // -----------------------------------------------------------------------------
-// 5. FORMATAÇÃO — parte da medida, não enfeite
+// 5. PRODUTOS — medidas da segunda página
+// -----------------------------------------------------------------------------
+//
+// ÂNCORAS DESTAS CINCO (período de 2017-01 a 2018-08, o filtro da página):
+//
+//   Categorias ............      74        Preço Médio Item ... R$ 120,35
+//   Produtos Vendidos .....  32.578        % Frete ............     16,61%
+//
+// Repare que estas âncoras NÃO são as do cabeçalho: aquelas valem para o
+// dataset inteiro, estas para o recorte que as páginas do painel aplicam.
+
+// A ARMADILHA DA DIREÇÃO DO FILTRO — a razão do CALCULATE aqui.
+//
+// Num modelo estrela o filtro corre da DIMENSÃO para a FATO, nunca de volta.
+// A versão ingênua desta medida seria:
+//
+//     Categorias = DISTINCTCOUNT ( dim_produto[categoria] )       <- ERRADA
+//
+// e ela conta as 74 linhas da dim_produto sempre, ignorando o filtro de
+// período da página, o de status e qualquer clique num visual. Hoje o número
+// bate por coincidência: no recorte atual, todas as 74 categorias venderam.
+// Bastaria filtrar um mês para ela mentir — e mentir para MAIS, dizendo 74
+// onde venderam 50.
+//
+// `fato_vendas` como argumento de filtro do CALCULATE é o que empurra o
+// contexto do lado dos fatos de volta para a dimensão.
+Categorias =
+CALCULATE (
+    DISTINCTCOUNT ( dim_produto[categoria] ),
+    fato_vendas,
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+// Esta lê coluna DA FATO, então o filtro já chega sozinho e não precisa do
+// truque acima. A diferença entre as duas é a lição inteira.
+Produtos Vendidos =
+CALCULATE (
+    DISTINCTCOUNT ( fato_vendas[sk_produto] ),
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+
+// [Receita Mercadoria], NÃO [Receita]. "Preço do produto" não inclui frete —
+// se incluísse, uma cadeira pesada pareceria mais cara do que é. É a mesma
+// separação que fez a fato guardar `preco` e `frete` em colunas distintas.
+//
+// E não confundir com [Ticket Médio], que divide por PEDIDO. Este divide por
+// ITEM: R$ 120,35 contra R$ 160,19. Os dois estão certos e respondem perguntas
+// diferentes.
+Preço Médio Item =
+DIVIDE ( [Receita Mercadoria], [Itens Vendidos] )
+
+// SUM(frete)/SUM(preco), nunca AVG(frete/preco). A regra vem do P7 do
+// sql/07: a média das razões daria o mesmo peso a um item de R$ 10 e a um de
+// R$ 5.000, e o frete de item barato é proporcionalmente enorme.
+% Frete =
+DIVIDE ( [Receita Frete], [Receita Mercadoria] )
+
+// A medida da curva ABC, e o DAX mais denso do projeto.
+//
+// Para cada categoria, soma a receita de TODAS as categorias que faturam igual
+// ou mais que ela, e divide pelo total. É a soma corrida que o SQL faz com
+// SUM(...) OVER (ORDER BY receita DESC) no P2 — aqui sem ORDER BY, porque o
+// DAX não tem ordem: o "acumulado até aqui" precisa ser reescrito como
+// "todas as que são >= a atual".
+//
+// ALLSELECTED e não ALL: respeita o que o usuário filtrou na página (o
+// período, um clique noutro visual) e ignora só o filtro da própria categoria
+// — que é o que precisa cair para a comparação entre categorias existir.
+//
+// REMOVEFILTERS no total pelo mesmo motivo: o denominador tem de ser o total
+// das categorias visíveis, não o da categoria da linha (que daria 100% em
+// todas).
+% Acumulado =
+VAR ReceitaAtual = [Receita]
+VAR TotalGeral =
+    CALCULATE ( [Receita], REMOVEFILTERS ( dim_produto[categoria] ) )
+VAR Acumulado =
+    CALCULATE (
+        [Receita],
+        FILTER ( ALLSELECTED ( dim_produto[categoria] ), [Receita] >= ReceitaAtual )
+    )
+RETURN
+    DIVIDE ( Acumulado, TotalGeral )
+
+
+// -----------------------------------------------------------------------------
+// 6. FORMATAÇÃO — parte da medida, não enfeite
 // -----------------------------------------------------------------------------
 //
 // Definir em Ferramentas de Medida, uma vez por medida. Sem isso o painel

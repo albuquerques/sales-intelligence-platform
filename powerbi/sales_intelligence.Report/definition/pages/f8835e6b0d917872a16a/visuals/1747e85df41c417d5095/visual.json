@@ -4,10 +4,10 @@
   "position": {
     "x": 1528,
     "y": 130,
-    "z": 4000,
+    "z": 12000,
     "height": 140,
     "width": 352,
-    "tabOrder": 4000
+    "tabOrder": 12000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -51,7 +51,6 @@
         "isDefaultSort": true
       }
     },
-    "drillFilterOtherVisuals": true,
     "objects": {
       "value": [
         {
@@ -66,6 +65,7 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
   }
 }

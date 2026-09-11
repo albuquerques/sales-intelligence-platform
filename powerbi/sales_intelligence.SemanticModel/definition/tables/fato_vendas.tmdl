@@ -57,6 +57,26 @@ table fato_vendas
 		formatString: 0.00
 		lineageTag: 75fde60c-c3cb-4bcc-b870-1b875b044ee1
 
+	measure Categorias = CALCULATE ( DISTINCTCOUNT ( dim_produto[categoria] ), fato_vendas, dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: #,0
+		lineageTag: 38e9e37c-09d9-4424-b7e0-db825bc34f20
+
+	measure 'Produtos Vendidos' = CALCULATE ( DISTINCTCOUNT ( fato_vendas[sk_produto] ), dim_status_pedido[eh_venda_efetiva] = TRUE () )
+		formatString: #,0
+		lineageTag: 6880f203-1dec-4f65-b001-e89f14adfebf
+
+	measure 'Preço Médio Item' = DIVIDE ( [Receita Mercadoria], [Itens Vendidos] )
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: aaf62b05-2ff1-4c51-9b65-41298426e8b1
+
+	measure '% Frete' = DIVIDE ( [Receita Frete], [Receita Mercadoria] )
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: 76752d99-73b4-4cf6-af6c-f736579b3dfb
+
+	measure '% Acumulado' = VAR ReceitaAtual = [Receita] VAR TotalGeral = CALCULATE ( [Receita], REMOVEFILTERS ( dim_produto[categoria] ) ) VAR Acumulado = CALCULATE ( [Receita], FILTER ( ALLSELECTED ( dim_produto[categoria] ), [Receita] >= ReceitaAtual ) ) RETURN DIVIDE ( Acumulado, TotalGeral )
+		formatString: 0.0%;-0.0%;0.0%
+		lineageTag: 028b7da2-2c54-4d06-8dc3-7b0ace2cac1d
+
 	measure 'Itens (com cancelados)' = COUNTROWS ( fato_vendas )
 		formatString: #,0
 		lineageTag: b966c828-8f8a-46c1-81a0-6eac9c74c9e4

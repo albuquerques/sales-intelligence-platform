@@ -4,10 +4,10 @@
   "position": {
     "x": 412,
     "y": 130,
-    "z": 1000,
+    "z": 9000,
     "height": 140,
     "width": 352,
-    "tabOrder": 1000
+    "tabOrder": 9000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -50,6 +50,21 @@
         ],
         "isDefaultSort": true
       }
+    },
+    "objects": {
+      "value": [
+        {
+          "properties": {
+            "labelDisplayUnits": {
+              "expr": {
+                "Literal": {
+                  "Value": "1D"
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "visualContainerObjects": {
       "title": [
@@ -302,21 +317,6 @@
         }
       ]
     },
-    "drillFilterOtherVisuals": true,
-    "objects": {
-      "value": [
-        {
-          "properties": {
-            "labelDisplayUnits": {
-              "expr": {
-                "Literal": {
-                  "Value": "1D"
-                }
-              }
-            }
-          }
-        }
-      ]
-    }
+    "drillFilterOtherVisuals": true
   }
 }

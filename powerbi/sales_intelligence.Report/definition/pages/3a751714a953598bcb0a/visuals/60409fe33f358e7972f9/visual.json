@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "7f955cf36f9163853238",
+  "name": "60409fe33f358e7972f9",
   "position": {
-    "x": 1260,
-    "y": 750,
-    "z": 4000,
-    "height": 90,
-    "width": 620,
-    "tabOrder": 4000
+    "x": 412,
+    "y": 130,
+    "z": 1000,
+    "height": 140,
+    "width": 352,
+    "tabOrder": 1000
   },
   "visual": {
     "visualType": "cardVisual",
@@ -23,11 +23,11 @@
                       "Entity": "fato_vendas"
                     }
                   },
-                  "Property": "Itens Entregues"
+                  "Property": "Categorias"
                 }
               },
-              "queryRef": "fato_vendas.Itens Entregues",
-              "nativeQueryRef": "Itens Entregues"
+              "queryRef": "fato_vendas.Categorias",
+              "nativeQueryRef": "Categorias"
             }
           ]
         }

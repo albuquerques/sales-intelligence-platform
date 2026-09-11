@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "c3821e35a54c208c777a",
+  "name": "7a715e27a180988e102b",
   "position": {
     "x": 40,
     "y": 26,
-    "z": 7000,
+    "z": 5000,
     "height": 44,
     "width": 900,
-    "tabOrder": 7000
+    "tabOrder": 5000
   },
   "visual": {
     "visualType": "textbox",
@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Visão Geral",
+                    "value": "Produtos",
                     "textStyle": {
                       "fontSize": "24pt",
                       "fontWeight": "bold"

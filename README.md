@@ -110,8 +110,7 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 
 **Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
 estrela com 5 dimensões e a fato) + perguntas de negócio em SQL + o painel em
-Power BI com a primeira página pronta.** Faltam as páginas de produtos e
-clientes.
+Power BI com as páginas Visão Geral e Produtos.** Falta a página de clientes.
 
 A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
@@ -396,7 +395,7 @@ análise mais forte que o dataset permite, e ela está fora do modelo.
 ## O modelo dentro do Power BI
 
 `powerbi/sales_intelligence.pbip` — as 6 tabelas da `mart` em modo **Import**,
-7 relações, `dim_data` marcada como tabela de datas e 15 medidas DAX.
+7 relações, `dim_data` marcada como tabela de datas e 20 medidas DAX.
 
 **A camada semântica não repete regra de negócio; ela herda.** As duas
 definições do `sql/07` (receita = `preco + frete`; dinheiro exclui cancelado)
@@ -524,6 +523,71 @@ repetido em cada máquina.
 
 ---
 
+## A página de Produtos
+
+Curva ABC das categorias, o peso do frete e a tabela completa das 74
+categorias. Mesmo recorte de período da Visão Geral — o filtro é **copiado**
+do `page.json` da outra página, não reescrito: duas versões do mesmo recorte
+podem divergir, e um painel que discorda de si mesmo não tem conserto de
+confiança.
+
+### A concentração é fraca, e essa é a resposta
+
+A curva ABC costuma mostrar poucos itens respondendo por 80% da receita. Aqui
+não:
+
+```
+top  5 categorias ....  39,3%
+top 10 categorias ....  62,4%
+top 18 categorias ....  ~80%      de um total de 74
+```
+
+São precisas 18 categorias para chegar a 80%. Não existe carro-chefe neste
+marketplace, e um gráfico de barras sozinho nunca diria isso — por isso a
+tabela completa fica embaixo, com o `% Acumulado` linha a linha.
+
+### A armadilha da direção do filtro
+
+A medida `Categorias` parece trivial e não é:
+
+```dax
+-- ERRADA: conta as 74 linhas da dimensão, sempre
+Categorias = DISTINCTCOUNT ( dim_produto[categoria] )
+
+-- CERTA
+Categorias =
+CALCULATE (
+    DISTINCTCOUNT ( dim_produto[categoria] ),
+    fato_vendas,
+    dim_status_pedido[eh_venda_efetiva] = TRUE ()
+)
+```
+
+Num modelo estrela o filtro corre **da dimensão para a fato, nunca de volta**.
+A versão ingênua ignora o filtro de período da página, o de status e qualquer
+clique num visual — e hoje daria `74`, que é o número certo, porque no recorte
+atual todas as categorias venderam. Bastaria filtrar um mês para ela dizer 74
+onde venderam 50. `fato_vendas` como argumento de filtro é o que empurra o
+contexto de volta.
+
+### Densidade de valor: o frete pesa onde o item é barato
+
+```
+Móveis Decoração ....... frete 23,68% do valor da mercadoria  ·  item médio R$  87,69
+Relógios Presentes ..... frete  8,37%                          ·  item médio R$ 200,31
+```
+
+Quase três vezes de diferença, e não é ineficiência de logística: um relógio de
+R$ 300 pesa 200 gramas, uma estante de R$ 300 pesa 20 quilos. As duas séries
+estão no mesmo visual — colunas descendo, linha subindo — porque em dois
+gráficos separados a comparação dependeria de o leitor cruzar duas listas
+ordenadas de formas diferentes.
+
+Essa análise só existe porque a `fato_vendas` guardou `preco` e `frete` em
+colunas distintas. Com um único `valor_total` gravado, ela seria impossível.
+
+---
+
 ## Estrutura
 
 ```
@@ -554,7 +618,7 @@ powerbi/
   sales_intelligence.Report/         os visuais, em JSON — um arquivo por visual
   sales_intelligence.SemanticModel/  o modelo e as medidas, em TMDL
   sales_intelligence.pbix            o painel com os dados dentro (abre sem servidor)
-  medidas.dax                        as 15 medidas em texto comentado
+  medidas.dax                        as 20 medidas em texto comentado
   tema.json                          a paleta, aplicada por Exibição > Temas
 .env.example         modelo das credenciais do PostgreSQL
 ```
