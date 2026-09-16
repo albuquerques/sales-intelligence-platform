@@ -12,7 +12,7 @@ proposito -- e esse DataFrame e o unico lugar onde da para OLHAR o dado antes de
 grava-lo. E ali que a validacao acontece.
 
 Requer um servidor PostgreSQL rodando e um arquivo .env com as credenciais
-(copie o .env.example). Ver secao "PostgreSQL" no README.
+(copie o .env.example). Passo a passo em docs/pipeline.md.
 """
 
 from __future__ import annotations

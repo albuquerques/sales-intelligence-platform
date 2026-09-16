@@ -1,102 +1,14 @@
 # Sales Intelligence Platform
 
-Pipeline de dados sobre o **Olist Brazilian E-Commerce Dataset** (~100 mil pedidos
-reais de marketplace), da ingestão dos arquivos brutos até a camada pronta para
-análise em Power BI.
+Pipeline de dados sobre o **Olist Brazilian E-Commerce Dataset** — ~100 mil
+pedidos reais de um marketplace brasileiro — do CSV bruto até um painel em
+Power BI.
 
 ## Problema
 
 Uma empresa de e-commerce possui dados de vendas distribuídos em diferentes
-fontes e precisa de uma estrutura centralizada para análise de desempenho.
-
-## Objetivo
-
-Construir um pipeline capaz de coletar, armazenar, transformar e disponibilizar
-informações comerciais para análise.
-
----
-
-## Começando
-
-O projeto roda em **dois níveis**, e eles são independentes:
-
-| Nível | Banco | O que precisa | Para quê |
-|---|---|---|---|
-| **RAW** (bronze) | DuckDB, embarcado | só `pip install` | roda logo após o clone |
-| **STAGING** (prata) | PostgreSQL, servidor | servidor + `.env` | chaves estrangeiras, tipos exatos, transação |
-
-O nível RAW existe para que o repositório não dependa de nada externo: DuckDB é
-uma biblioteca lendo um arquivo, e a amostra em `data/sample/` já vem
-versionada. O nível STAGING usa PostgreSQL porque `FOREIGN KEY`, `CHECK` e
-`NUMERIC` exato só valem de verdade num servidor — e servidor não tem como ser
-embarcado no clone. Um não substitui o outro.
-
-### Nível RAW — sem instalar nada
-
-```bash
-git clone https://github.com/albuquerques/sales-intelligence-platform.git
-cd sales-intelligence-platform
-
-pip install -r requirements.txt
-python src/load_raw.py --sample
-```
-
-Isso cria `sales_intelligence.duckdb` com o schema `raw` populado. Para conferir:
-
-```bash
-python -c "import duckdb; print(duckdb.connect('sales_intelligence.duckdb').sql('FROM raw.orders LIMIT 5'))"
-```
-
-O nível STAGING está descrito em [Camada STAGING — PostgreSQL](#camada-staging--postgresql).
-
-### Rodando com o dataset completo
-
-A amostra tem ~3 mil pedidos; o dataset real tem 99.441 pedidos e 1 milhão de
-linhas de geolocalização. Para trabalhar com ele:
-
-```bash
-python src/download_data.py     # baixa ~121 MB e valida os checksums
-python src/load_raw.py
-```
-
----
-
-## Sobre a amostra
-
-Os CSVs brutos **não são versionados** (~121 MB): dados de entrada não pertencem
-ao histórico do git, que guarda toda versão para sempre. Mas um repositório que
-não roda depois do clone também não serve. A solução tem três camadas:
-
-| Camada | Onde | Para quê |
-|---|---|---|
-| Amostra versionada | `data/sample/` (~5 MB) | O projeto roda sem download |
-| Dataset completo | GitHub Release, via `src/download_data.py` | Escala real |
-| Manifesto | `data/manifest.json` | SHA256 + contagens; valida o download |
-
-A amostra é **referencialmente íntegra**. Não são "as primeiras N linhas de cada
-arquivo" — isso quebraria todos os JOINs. São 3.000 pedidos sorteados, dos quais
-todo o resto é derivado em cascata:
-
-```
-orders (sorteio)
- ├── customers      : só os clientes desses pedidos
- ├── order_items    : só os itens desses pedidos
- │    ├── products  : só os produtos que aparecem nesses itens
- │    └── sellers   : só os vendedores que aparecem nesses itens
- ├── order_payments : só os pagamentos desses pedidos
- └── order_reviews  : só as avaliações desses pedidos
-```
-
-O `src/make_sample.py` verifica que não sobrou nenhuma referência órfã antes de
-gravar. Os defeitos de qualidade do dataset original (`review_id` duplicado, BOM
-no cabeçalho, nulos correlacionados em `products`) foram preservados de propósito
-— eles são parte do que o pipeline precisa tratar.
-
-Essa integridade não é preciosismo: sem ela, a carga no PostgreSQL
-(`load_postgres.py --sample`) falharia nas chaves estrangeiras. A amostra
-alimenta os dois níveis.
-
----
+fontes e precisa de uma estrutura centralizada para analisar o desempenho:
+quanto vende, o quê, para quem e em quanto tempo entrega.
 
 ## Arquitetura
 
@@ -104,579 +16,67 @@ Modelo **medallion**, em camadas:
 
 ```
 CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
-         tudo VARCHAR      tipado e limpo       modelado
-         sem constraint    deduplicado          fatos e dimensões
+         DuckDB            PostgreSQL           PostgreSQL         3 páginas
+         tudo VARCHAR      tipado e validado    modelo estrela     23 medidas DAX
 ```
 
-**Estado atual: RAW (DuckDB) + STAGING (PostgreSQL) + MART completa (modelo
-estrela com 5 dimensões e a fato) + perguntas de negócio em SQL + o painel em
-Power BI com as três páginas — Visão Geral, Produtos e Clientes.** O painel
-está fechado; o que resta é organização do repositório e documentação.
+- **RAW** guarda o dado como ele chegou, defeitos incluídos: eles são tratados
+  adiante, não escondidos na entrada.
+- **STAGING** valida em Python antes de gravar e garante com constraint no
+  banco — o Python explica o erro, a constraint impede que ele entre.
+- **MART** é um modelo estrela: 5 dimensões e a `fato_vendas`, uma linha por
+  item vendido. A carga roda 21 verificações e desfaz tudo se uma falhar.
+- **Power BI** importa a MART e herda as regras de negócio do SQL. Cada número
+  do painel foi conferido contra ele.
 
-A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
+**Estado atual:** as quatro camadas e o painel estão prontos. Em andamento:
+organização do repositório e documentação.
 
-- **Toda coluna é `VARCHAR`.** Converter datas na entrada faria uma única linha
-  malformada derrubar a carga inteira. A tipagem fica para a staging, onde o erro
-  pode ser tratado sem perder o resto.
-- **Nenhuma constraint.** Uma PK em `raw.order_reviews` rejeitaria os `review_id`
-  duplicados que sabemos existir. A RAW guarda o problema para que ele seja
-  tratado, não escondido.
-- **Nomes idênticos ao CSV, erros de grafia incluídos** (`product_name_lenght`).
-  Renomear aqui impediria comparar a tabela com o arquivo original.
-- **Colunas de linhagem** `_source_file` e `_ingested_at` respondem "de onde veio
-  esta linha e quando entrou?".
+## O que o painel mostra
 
----
+Recorte de jan/2017 a ago/2018 — R$ 15,7 milhões em 97.905 pedidos.
 
-## Camada STAGING — PostgreSQL
+- **97% dos clientes compram uma vez e não voltam.** São 2.874 recorrentes em
+  94.703. A diferença entre receita por cliente (R$ 165,61) e ticket médio
+  (R$ 160,19) é o tamanho inteiro do efeito: R$ 5,42.
+- **Não existe carro-chefe.** São precisas 18 das 74 categorias para chegar a
+  80% da receita.
+- **A promessa de prazo é calibrada ao contrário.** Alagoas demora três vezes o
+  que São Paulo demora e atrasa cinco vezes mais — e ainda recebe folga de
+  prazo menor que a do Paraná.
 
-> **Exige um servidor PostgreSQL rodando.** Não é opcional no sentido de
-> acessório — é aqui que as garantias de integridade existem. É opcional apenas
-> no sentido de que o nível RAW continua funcionando sem isso.
+## Começando
 
-Pipeline `CSV → pandas → validação → PostgreSQL`:
+**Sem servidor** — só Python. A amostra de 3.000 pedidos já vem no repositório:
 
 ```bash
-# 1. crie o banco vazio
-createdb -U postgres sales_intelligence
-
-# 2. configure as credenciais
-cp .env.example .env                       # e preencha PGPASSWORD
-
-# 3. rode o pipeline
+git clone https://github.com/albuquerques/sales-intelligence-platform.git
+cd sales-intelligence-platform
 pip install -r requirements.txt
-python src/load_postgres.py --check-only   # valida sem gravar
-python src/load_postgres.py --sample       # carrega a amostra
-python src/load_postgres.py                # carrega o dataset completo
+python src/load_raw.py --sample      # cria sales_intelligence.duckdb, schema raw
 ```
 
-No Windows, o instalador do PostgreSQL não adiciona os utilitários ao `PATH`;
-use o caminho completo e `Copy-Item` no lugar do `cp`:
-
-```powershell
-& "C:\Program Files\PostgreSQL\18\bin\createdb.exe" -U postgres sales_intelligence
-Copy-Item .env.example .env
-```
-
-Saída da carga completa (347.578 linhas, ~43 s):
-
-```
-[2/3] Validando
-  OK       customers      sem problemas
-  OK       sellers        sem problemas
-  OK       products       sem problemas
-  OK       orders         sem problemas
-  OK       order_items    sem problemas
-
-[3/3] Gravando no PostgreSQL
-  OK       staging.customers         99,441 linhas
-  OK       staging.sellers            3,095 linhas
-  OK       staging.products          32,951 linhas
-  OK       staging.orders            99,441 linhas
-  OK       staging.order_items      112,650 linhas
-```
-
-### Por que o pandas está no meio
-
-No `load_raw.py` o DuckDB lê o CSV sozinho, dentro do `INSERT` — o dado nunca
-passa pela memória do Python. É rápido, mas não existe ponto onde inspecionar o
-dado entre ler e gravar. O DataFrame é esse ponto.
-
-### O que é validado, e por quê
-
-| Checagem | Exemplo de saída |
-|---|---|
-| Colunas esperadas presentes | `colunas ausentes no CSV: product_weight_g` |
-| PK única e não-nula (composta em `order_items`) | `PK (customer_id): 2 linhas duplicadas` |
-| `NOT NULL` do DDL | `customer_id: 3 valores nulos` |
-| Largura fixa (ID 32, CEP 5, UF 2) | `customer_id: 1 valores fora do tamanho 32` |
-| Conversão de inteiros e decimais | `product_weight_g: 1 valores com casa decimal` |
-| Formato de data | `order_purchase_timestamp: 1 datas em formato inválido` |
-| Domínio fechado (`order_status`) | `order_status: 1 valores fora do domínio` |
-| Integridade referencial | `order_id: 1 valores sem correspondência em orders.order_id` |
-
-O PostgreSQL pegaria quase tudo isso sozinho — mas diria apenas
-`violates foreign key constraint "fk_order_items_order"`, sem dizer quantas
-linhas nem quais. **A constraint garante; o Python explica.** Por isso o projeto
-tem os dois: validação em Python para diagnosticar, constraint no banco para
-valer também fora deste script.
-
-### Decisões de carga
-
-- **Validar tudo antes de gravar qualquer coisa.** As 5 tabelas são conferidas
-  com a conexão ainda fechada. Se algo falha, nada é gravado e a saída lista
-  todos os problemas de uma vez, em vez de um por execução.
-- **`COPY`, não `df.to_sql()`.** O `to_sql` gera `INSERT`s e exige o SQLAlchemy;
-  para as 112 mil linhas de `order_items` são minutos. O `COPY` é o carregador
-  em massa nativo — segundos.
-- **Uma única transação.** Ou as 5 tabelas entram, ou o banco fica exatamente
-  como estava. Nunca meio carregado.
-- **Idempotente.** `TRUNCATE` antes da carga; rodar duas vezes dá o mesmo
-  resultado.
-- **Ordem de carga ditada pelas FKs:** `customers`, `sellers`, `products` →
-  `orders` → `order_items`.
-
-### Contraste entre as camadas
-
-| | RAW (DuckDB) | STAGING (PostgreSQL) | MART (PostgreSQL) |
-|---|---|---|---|
-| Tipos | tudo `VARCHAR` | `NUMERIC(10,2)`, `TIMESTAMP`, `SMALLINT` | idem |
-| Constraints | nenhuma | 5 PK, 4 FK, 6 CHECK | 6 PK, 7 FK, 6 UNIQUE, 9 CHECK |
-| Modelagem | igual à origem | igual à origem | estrela |
-| Nomes | do CSV, erros inclusive | do CSV | português |
-| Objetivo | receber o dado como ele é | garantir que ele é válido | responder perguntas |
-
-Detalhes de tipo em [`sql/02_create_postgres_tables.sql`](sql/02_create_postgres_tables.sql):
-`NUMERIC` em dinheiro (nunca `FLOAT` — ponto flutuante binário não representa
-R$ 0,10 exatamente e o faturamento fecha com diferença de centavos), `CHAR(5)`
-no CEP (como inteiro, `01037` viraria `1037`), `TIMESTAMP` sem fuso (a origem
-não informa fuso, e inventar um é pior que não ter).
-
-### Credenciais
-
-Ficam em `.env`, que **não é versionado**. O modelo está em `.env.example`. As
-variáveis usam os nomes padrão da libpq (`PGHOST`, `PGUSER`, `PGPASSWORD`…), que
-tanto o `psql` quanto o `psycopg` leem sem configuração extra.
-
----
-
-## Camada MART — o modelo estrela
+**Com PostgreSQL** — o pipeline inteiro, no dataset completo. Exige um servidor
+rodando e o `.env` configurado ([passo a passo](docs/pipeline.md#camada-staging--postgresql)):
 
 ```bash
-python src/build_mart.py                 # cria/atualiza dimensões + fato e verifica
-python src/build_mart.py --so-verificar  # só roda as verificações, não escreve
+python src/download_data.py          # baixa ~121 MB e confere os checksums
+python src/load_postgres.py          # CSV -> validação -> schema staging
+python src/build_mart.py             # staging -> modelo estrela, com verificação
 ```
 
-```
-              dim_data (1.828)          dim_produto (32.951)
-                       \                   /
-                        \                 /
-   dim_cliente (96.096) ── fato_vendas ── dim_vendedor (3.095)
-                             112.650      /
-                                \        /
-                          dim_status_pedido (8)
-```
+**Só o painel** — abra `powerbi/sales_intelligence.pbix` no Power BI Desktop.
+Os dados vêm dentro do arquivo; não precisa de banco.
 
-Os quatro arquivos SQL rodam **numa transação só**. Ou o modelo inteiro fica
-coerente, ou o schema fica exatamente como estava — uma fato gravada apontando
-para uma dimensão que não foi é o pior estado possível deste banco, porque ele
-*parece* inteiro.
+## Documentação
 
-### O grão
-
-> Uma linha de `fato_vendas` é **um item vendido dentro de um pedido**.
-
-Essa frase decide todo o resto, e está gravada na `PRIMARY KEY (order_id,
-order_item_id)` — não só em comentário. Sem a PK, o grão é uma promessa; com
-ela, o banco rejeita qualquer carga que o viole.
-
-O grão de pedido foi descartado por um motivo estrutural: 10.578 pedidos têm
-2+ itens e 1.278 têm 2+ vendedores, então nesse grão `dim_produto` e
-`dim_vendedor` ficam **inalcançáveis** — e "faturamento por categoria" é a
-pergunta central do painel. **Custo aceito e documentado:** 775 pedidos não têm
-item nenhum (77% deles `unavailable`) e por isso não existem na fato. Contagem
-de pedidos dá 98.666, não 99.441.
-
-### Aditivo e não aditivo
-
-| Coluna | Tipo de medida | Como usar |
-|---|---|---|
-| `preco`, `frete` | aditiva | soma em qualquer combinação de dimensões |
-| `dias_entrega`, `dias_vs_previsto` | **não aditiva** | média — "total de dias de entrega" não significa nada |
-
-O Power BI põe Soma como padrão em toda coluna numérica, então marcar as duas
-últimas é cuidado ativo, não formalidade.
-
-Não existe `valor_total`: para medida aditiva, `SUM(preco) + SUM(frete)` é
-*identidade* com `SUM(preco + frete)`, e guardar a coluna criaria um segundo
-lugar onde a mesma verdade pode divergir. Não existe `quantidade`: neste grão
-ela é constante 1, e `COUNT(*)` já responde.
-
-### Três chaves de data, não seis
-
-`dim_data` aparece três vezes na fato — compra, entrega e previsão — porque é
-uma **dimensão de papéis múltiplos**. Das seis datas do dataset, três ficaram de
-fora: cada uma a mais é uma relação inativa no Power BI, que cobra
-`USERELATIONSHIP` em toda medida que a usar.
-
-Ausência de entrega (2,18% dos itens) aparece de duas formas coerentes entre si,
-e um `CHECK` obriga as duas a concordarem:
-
-- **na chave**, vira `-1` — o membro "Não informado". Com `NULL` ali, um
-  `INNER JOIN` apagaria esses itens e sumiria faturamento sem erro nenhum;
-- **na medida**, vira `NULL` — que o `AVG` ignora, e é o certo: pedido não
-  entregue não tem prazo. Gravar `0` puxaria a média para baixo e mentiria.
-
-### O que prova que a fato está certa
-
-`build_mart.py` roda **21 verificações capazes de reprovar** (mais 12
-informativas) e desfaz a transação inteira se qualquer uma falhar — modelo que
-não passou não fica gravado. As três que carregam o peso:
-
-| Verificação | Pega o quê |
+| Documento | O que tem |
 |---|---|
-| `SUM(preco)` e `SUM(frete)` **em centavos inteiros** contra a `staging` | explosão de junção — o defeito que duplica receita sem mudar nada visível |
-| viagem de volta `sk → dimensão → chave natural` vs. `staging` | apelido de `JOIN` trocado, que produz chave válida apontando para o produto errado |
-| `-1` e prazo `NULL` concordando | linha que some do filtro de data e continua contando na média |
-
-Contagem sozinha não basta: uma fato pode ter o número de linhas certo e o
-dinheiro errado. É por isso que a soma é a verificação central, e é comparada em
-centavos — em ponto flutuante, uma diferença de 0,0000001 reprovaria sem haver
-erro nenhum.
-
----
-
-## As primeiras perguntas de negócio
-
-```bash
-psql -U postgres -d sales_intelligence -f sql/07_perguntas_negocio.sql
-```
-
-Oito perguntas em [`sql/07_perguntas_negocio.sql`](sql/07_perguntas_negocio.sql),
-somente leitura. É a primeira etapa que *consome* o modelo em vez de construí-lo
-— e o teste real dele: pergunta que exige contorcionismo em SQL é sintoma de
-modelagem errada, não de SQL fraco. Nenhuma exigiu.
-
-**Duas regras valem para o arquivo inteiro**, escritas no cabeçalho porque dois
-números do painel que discordam custam mais que qualquer consulta:
-
-- **Receita = `preco + frete`** (o que o cliente pagou). As parcelas aparecem
-  separadas onde a diferença importa.
-- **Dinheiro exclui cancelado, volume mostra os dois.** Receita filtra
-  `eh_venda_efetiva` — R$ 15.735.527,03 de base. P8 não filtra, porque "quanto
-  se cancela" é a própria pergunta.
-
-| | Pergunta | Resposta curta |
-|---|---|---|
-| P1 | A receita cresce? | ~2,3× de mar/17 a ago/18; pico em nov/17 (Black Friday, +53%) |
-| P2 | Quais categorias sustentam? | **17 de 74** fazem 80% da receita |
-| P3 | Quanto vale um pedido? | Ticket médio R$ 160,24 · **mediana R$ 105,28** |
-| P4 | Onde está o dinheiro? | SP+RJ+MG = 62,5%; ticket é *inverso* à concentração |
-| P5 | O cliente volta? | **97% compram uma vez só** |
-| P6 | A entrega cumpre o prazo? | AL atrasa 20,8%, SP 4,4% — mas o prazo é inflado |
-| P7 | Quanto o frete pesa? | 22,7% do preço no Norte, 15,2% no Sudeste |
-| P8 | O que não vira venda? | 0,49% dos itens — cancelamento é irrelevante aqui |
-
-### As três armadilhas que essas consultas desviam
-
-O cabeçalho do arquivo documenta as três, porque cada uma produz um número
-*plausível e errado* — o tipo que ninguém confere:
-
-- **O grão é de item.** `AVG(preco + frete)` na fato dá R$ 140,37 e parece ticket
-  médio. Não é: subestima em 12,4%, porque pedido com 3 itens é contado 3 vezes
-  pelo valor de um item. Ticket médio exige agregar por pedido *antes* da média.
-- **A série temporal tem buraco e toco.** 2016-11 não tem nenhum item e 2018-09
-  tem 1 — corte da extração, não queda de vendas. Num gráfico de linha isso vira
-  um colapso do negócio. A coluna `eh_mes_pleno` é calculada do próprio dado.
-- **8 itens são `delivered` sem data de entrega.** Toda análise de SLA usa
-  `eh_entregue` **e** `dias_entrega IS NOT NULL`, nunca só uma das duas.
-
-### Nenhuma consulta virou `VIEW`
-
-View é para consulta que se repete, e quem vai repetir é o Power BI — que ainda
-não existe. Criar view agora seria adivinhar o que ele vai pedir, e cada view é
-mais um lugar onde a regra de negócio passa a morar.
-
-### Por que não há uma segunda fact table
-
-`order_payments` e `order_reviews` seguem fora do modelo, e é decisão, não
-esquecimento: as duas estão em **grão de pedido**, e `fato_vendas` está em grão
-de item. Como coluna da fato existente seriam defeito — pagamento explodiria a
-junção (2.961 pedidos têm 2+ formas de pagamento), e nota repetida por item
-faria a média pesar cada pedido pelo número de itens que ele tem. Mereceriam
-fatos próprias, ligadas às mesmas dimensões — o padrão se chama *fact
-constellation*, e é escopo que este projeto não assumiu.
-
-O custo está medido: atraso na entrega derruba a nota de **4,29** (no prazo)
-para **1,70** (8+ dias de atraso, com 69,7% de avaliações de 1 estrela). É a
-análise mais forte que o dataset permite, e ela está fora do modelo.
-
----
-
-## O modelo dentro do Power BI
-
-`powerbi/sales_intelligence.pbip` — as 6 tabelas da `mart` em modo **Import**,
-7 relações, `dim_data` marcada como tabela de datas e 23 medidas DAX.
-
-**A camada semântica não repete regra de negócio; ela herda.** As duas
-definições do `sql/07` (receita = `preco + frete`; dinheiro exclui cancelado)
-valem idênticas no DAX — se divergissem, o painel discordaria do arquivo que
-documenta as respostas e não haveria como saber qual está certo.
-
-### As medidas ficam em texto, não só no binário
-
-O `.pbix` é binário: o git guarda, mas não lê. Um `git diff` nele não diz nada,
-e uma medida errada entraria no histórico sem rastro. Por isso as 14 medidas
-também vivem em [`powerbi/medidas.dax`](powerbi/medidas.dax), comentadas — é o
-que se lê no GitHub, e o que permite revisar uma mudança de regra.
-
-### Como o modelo foi provado
-
-Nenhuma medida foi aceita por parecer certa. Cada uma foi conferida contra um
-número que o `build_mart.py` já tinha verificado:
-
-| Medida | Valor | Medida | Valor |
-|---|---|---|---|
-| Receita | R$ 15.735.527,03 | Itens Entregues | 110.189 |
-| Receita Mercadoria | R$ 13.494.400,74 | Prazo Médio | 12,41 dias |
-| Receita Frete | R$ 2.241.126,29 | Itens com Atraso | 7.264 |
-| Receita c/ cancelados | R$ 15.843.553,24 | % com Atraso | 6,59% |
-| Pedidos | 98.199 | Folga Média do Prazo | −12,03 dias |
-| Itens Vendidos | 112.101 | Ticket Médio | R$ 160,24 |
-| Clientes | 94.983 | Itens por Pedido | 1,14 |
-
-A primeira delas sozinha prova cinco coisas: a conexão, que as 112.650 linhas
-vieram inteiras, que a relação com `dim_status_pedido` propaga filtro, que o
-`eh_venda_efetiva` foi aplicado (senão daria 15.843.553,24) e que o
-`NUMERIC(10,2)` atravessou PostgreSQL → Npgsql → VertiPaq → DAX sem perder
-centavo.
-
-### As três decisões que a etapa exigiu
-
-**Import, não DirectQuery.** Dado congelado em out/2018 e 112 mil linhas: o
-VertiPaq comprime tudo e o DAX fica completo. DirectQuery serve para dado que
-muda e volume que não cabe — nenhum dos dois é o caso.
-
-**`mart.vw_calendario` ([`sql/08`](sql/08_create_mart_views.sql)).** O Power BI
-recusa marcar como tabela de datas uma coluna com nulos, e a `dim_data` tem um:
-o membro `-1`, criado na etapa da fato para que os itens sem entrega não sumam
-num `INNER JOIN`. A tabela mantém o membro — é destino da FK; a view o remove —
-é exigência da camada semântica. **As duas camadas querem coisas diferentes e as
-duas estão certas.** Medido antes de decidir: só `sk_data_entrega` chega ao
-`-1`, e essa é justamente a relação inativa.
-
-**Nenhuma transformação no Power Query.** Ele foi aberto uma vez, para trocar a
-*origem* de uma consulta — o que não é transformar dado. A regra continua:
-transformação mora em SQL, versionada. Dentro do `.pbix` ela ficaria trancada
-num binário.
-
-### O filtro duplo do SLA
-
-As medidas de prazo filtram `eh_entregue` **e** dependem de `dias_entrega` não
-vazio. `AVERAGE` e `COUNT` já ignoram vazio — o que resolve os 8 itens marcados
-`delivered` sem data —, mas engoliriam os **7 itens de pedidos cancelados que
-têm data de entrega**. Sem o filtro duplo, a base dá 110.196 em vez de 110.189 e
-o atraso dá 7.265 em vez de 7.264: diferença pequena o bastante para ninguém
-conferir, que é o que a torna perigosa.
-
----
-
-## O painel — página "Visão Geral"
-
-Cinco KPIs, receita e prazo médio de entrega por mês, o funil de status e o
-bloco de SLA. Recorte de **jan/2017 a ago/2018**.
-
-### De `.pbix` para PBIP: o relatório vira texto
-
-O `.pbix` é um ZIP com o modelo compilado dentro. O git guarda, mas não lê — e
-cada salvar entra inteiro no histórico. O **PBIP** (Power BI Project) é o mesmo
-relatório como pasta de texto: um `visual.json` por visual, o modelo em TMDL.
-Dá para revisar num diff, e dá para escrever direto no arquivo.
-
-Custo medido e aceito: **o PBIP não guarda os dados importados**, só a
-definição. Abrir o `.pbip` exige o PostgreSQL de pé. Por isso os dois níveis
-convivem, como já acontece entre DuckDB e PostgreSQL: o `.pbix`, versionado em
-marcos, preserva a propriedade de abrir e ver o painel sem instalar nada. Ele
-deixou de ser a fonte e passou a ser artefato de saída.
-
-### O recorte de período é uma decisão, e ela está escrita na tela
-
-A série começa em set/2016, mas nov/2016 não tem pedido nenhum e set/2018 tem
-um item. Num gráfico de linha isso desenha um colapso do negócio que nunca
-aconteceu. O painel filtra **2017-01 a 2018-08** — 349 itens e R$ 51.820,29
-fora, ou 0,33% da receita.
-
-O filtro é de **página**, não de visual: filtrar só o gráfico deixaria os
-cartões somando o dataset inteiro, e o KPI não fecharia com a linha logo
-abaixo. E é por **intervalo de datas**, não por lista de meses marcados —
-critério, não lista digitada, pelo mesmo motivo que o `eh_mes_pleno` do
-`sql/07` é calculado.
-
-O subtítulo `jan/2017 a ago/2018` existe por causa disso. Um recorte que o
-leitor não enxerga é uma afirmação sem contexto: "R$ 15,6 milhões" sem dizer de
-quando.
-
-### Ordem do eixo é informação, não estética
-
-O Power BI ordena um gráfico pela medida por padrão. Numa série temporal isso
-transforma a linha num ranking: a curva desce sempre, e a queda é artefato da
-ordenação, não do negócio — número certo, gráfico mentindo.
-
-Os dois gráficos ordenam pela coluna `ano_mes`, ascendente. Ela é `CHAR(7)` no
-formato `'2017-05'` justamente para que ordem alfabética e ordem cronológica
-sejam a mesma coisa; a decisão foi tomada na etapa das dimensões e é aqui que
-ela paga.
-
-### Formatação também produz número errado
-
-Três defeitos apareceram nesta etapa, e nenhum deles é estético:
-
-| Sintoma | Causa |
-|---|---|
-| `$ 15.683.706,74` | o botão de moeda grava o cifrão americano; símbolo é literal na máscara, e literal não se traduz |
-| `R$ 15,683,706.74` | a máscara é escrita na convenção invariante e traduzida ao desenhar — a localidade dessa tradução estava em `Automático` e resolvia para `en-US` |
-| `98 mil` | o cartão tem unidade de exibição própria, que vence a formatação da medida |
-
-Os três produzem números que *parecem* certos. O primeiro e o terceiro são
-corrigidos no arquivo versionado (`formatString` no TMDL, `labelDisplayUnits`
-no `visual.json`); o segundo é configuração da instalação e precisa ser
-repetido em cada máquina.
-
----
-
-## A página de Produtos
-
-Curva ABC das categorias, o peso do frete e a tabela completa das 74
-categorias. Mesmo recorte de período da Visão Geral — o filtro é **copiado**
-do `page.json` da outra página, não reescrito: duas versões do mesmo recorte
-podem divergir, e um painel que discorda de si mesmo não tem conserto de
-confiança.
-
-### A concentração é fraca, e essa é a resposta
-
-A curva ABC costuma mostrar poucos itens respondendo por 80% da receita. Aqui
-não:
-
-```
-top  5 categorias ....  39,3%
-top 10 categorias ....  62,4%
-top 18 categorias ....  ~80%      de um total de 74
-```
-
-São precisas 18 categorias para chegar a 80%. Não existe carro-chefe neste
-marketplace, e um gráfico de barras sozinho nunca diria isso — por isso a
-tabela completa fica embaixo, com o `% Acumulado` linha a linha.
-
-### A armadilha da direção do filtro
-
-A medida `Categorias` parece trivial e não é:
-
-```dax
--- ERRADA: conta as 74 linhas da dimensão, sempre
-Categorias = DISTINCTCOUNT ( dim_produto[categoria] )
-
--- CERTA
-Categorias =
-CALCULATE (
-    DISTINCTCOUNT ( dim_produto[categoria] ),
-    fato_vendas,
-    dim_status_pedido[eh_venda_efetiva] = TRUE ()
-)
-```
-
-Num modelo estrela o filtro corre **da dimensão para a fato, nunca de volta**.
-A versão ingênua ignora o filtro de período da página, o de status e qualquer
-clique num visual — e hoje daria `74`, que é o número certo, porque no recorte
-atual todas as categorias venderam. Bastaria filtrar um mês para ela dizer 74
-onde venderam 50. `fato_vendas` como argumento de filtro é o que empurra o
-contexto de volta.
-
-### Densidade de valor: o frete pesa onde o item é barato
-
-```
-Móveis Decoração ....... frete 23,68% do valor da mercadoria  ·  item médio R$  87,69
-Relógios Presentes ..... frete  8,37%                          ·  item médio R$ 200,31
-```
-
-Quase três vezes de diferença, e não é ineficiência de logística: um relógio de
-R$ 300 pesa 200 gramas, uma estante de R$ 300 pesa 20 quilos. As duas séries
-estão no mesmo visual — colunas descendo, linha subindo — porque em dois
-gráficos separados a comparação dependeria de o leitor cruzar duas listas
-ordenadas de formas diferentes.
-
-Essa análise só existe porque a `fato_vendas` guardou `preco` e `frete` em
-colunas distintas. Com um único `valor_total` gravado, ela seria impossível.
-
----
-
-## A página de Clientes
-
-Quem compra, onde está e em quanto tempo recebe.
-
-### 97% compram uma vez e não voltam
-
-```
-1 pedido .... 91.829 clientes .... 96,97%
-2 pedidos ....  2.639 ............  2,79%
-3 ou mais ......  235 ............  0,25%
-```
-
-Esse número não vira gráfico: seria uma barra gigante e três invisíveis. Ele é
-cartão e coluna de tabela.
-
-O par `Receita por Cliente` (R$ 165,61) e `Ticket Médio` (R$ 160,19) está na
-mesma linha de KPIs de propósito: **a diferença entre os dois é a recorrência**.
-Se ninguém comprasse duas vezes, seriam o mesmo número. R$ 5,42 é o tamanho
-inteiro do efeito.
-
-### Por que a recorrência é medida em DAX, e não lida da dimensão
-
-A `dim_cliente` já traz uma coluna `eh_recorrente`, calculada na carga. Usá-la
-seria trivial e estaria **errado**: ela foi calculada sobre o dataset inteiro e
-responderia `2.997`, ignorando o filtro de período da página, enquanto todo o
-resto mostra `2.874`.
-
-Um KPI que ignora em silêncio o filtro da própria página é o mesmo padrão que
-este projeto vem evitando desde a camada RAW. A medida recalcula:
-
-```dax
-Clientes Recorrentes =
-CALCULATE (
-    COUNTROWS (
-        FILTER (
-            VALUES ( fato_vendas[sk_cliente] ),
-            CALCULATE ( DISTINCTCOUNT ( fato_vendas[order_id] ) ) >= 2
-        )
-    ),
-    dim_status_pedido[eh_venda_efetiva] = TRUE ()
-)
-```
-
-O `CALCULATE` de dentro faz **transição de contexto**: para cada cliente da
-iteração, recalcula quantos pedidos distintos ele tem naquele contexto. A
-coluna da dimensão continua útil para outra coisa — **segmentar** novos contra
-recorrentes num slicer, onde ignorar o período é o comportamento desejado.
-
-### A promessa de prazo é calibrada ao contrário
-
-```
-       prazo    atraso    folga do prazo
-AL ... 24,4 d    20,9%        -8,7
-PA ... 23,7 d    11,4%       -14,1
-SP ....8,6 d      4,4%       -11,2
-PR ... 11,9 d     3,9%       -13,3
-```
-
-Alagoas demora três vezes o que São Paulo demora e atrasa cinco vezes mais. Mas
-o achado está na última coluna: a folga de AL é de **8,7 dias**, menor que a do
-Paraná (**13,3**). **O estado que mais precisa de prazo folgado é o que menos
-recebe** — a promessa é mais apertada justamente onde a operação é pior.
-
-Cumprir prazo inflado não é pontualidade, e o inverso também vale: o atraso de
-AL é em parte uma promessa mal calibrada.
-
-> **Ressalva estatística:** as três piores posições do gráfico são estados de
-> volume mínimo — RR tem 45 itens entregues, AP tem 81, AM tem 163. A média é
-> real, mas apoiada em pouca observação. Alagoas, com 426, é o primeiro em que
-> o número tem peso.
-
-### O frete aparece de novo, agora como distância
-
-```
-SP ....  8,64 dias  ·  ticket R$ 142,97
-RJ .... 15,06 dias  ·  ticket R$ 166,37
-BA .... 19,19 dias  ·  ticket R$ 181,44
-```
-
-Quanto mais longe, maior o ticket — e não é porque o interior compra produtos
-mais caros. `Ticket Médio` inclui frete, e frete cresce com a distância. O
-cliente distante paga mais pelo mesmo carrinho e espera mais tempo por ele.
-
-Na página de Produtos o frete explicava a diferença entre categorias
-(densidade de valor); aqui explica a diferença entre estados (distância). É o
-mesmo eixo visto de dois ângulos.
-
----
+| [pipeline.md](docs/pipeline.md) | RAW e STAGING: a amostra, a validação, as decisões de carga |
+| [star_schema.md](docs/star_schema.md) | MART: o grão, as verificações e as perguntas de negócio em SQL |
+| [dashboard.md](docs/dashboard.md) | Power BI: como abrir, as medidas e o que cada página mostra |
+| [data_dictionary.md](docs/data_dictionary.md) | profiling de todas as colunas do dataset de origem |
+| [er_diagram.md](docs/er_diagram.md) | diagrama ER do dataset de origem |
 
 ## Estrutura
 
@@ -685,9 +85,7 @@ data/
   sample/            amostra versionada (roda sem download)
   raw/               dataset completo (gitignored)
   manifest.json      checksums e contagens
-docs/
-  data_dictionary.md dicionário com profiling de todas as colunas
-  er_diagram.md      diagrama ER (Mermaid)
+docs/                a documentação listada acima
 sql/
   01_create_raw_tables.sql        camada RAW  (DuckDB)
   02_create_postgres_tables.sql   camada STAGING (PostgreSQL)
@@ -715,40 +113,9 @@ powerbi/
 
 ## Stack
 
-**DuckDB** na camada RAW: roda embarcado, sem servidor nem Docker, lê CSV
-nativamente e processa o milhão de linhas de `geolocation` em segundos. É o que
-permite o projeto rodar logo após o clone.
+Python · DuckDB · pandas · PostgreSQL · psycopg 3 · Power BI (PBIP, TMDL, DAX)
 
-**PostgreSQL** na camada STAGING: é onde chaves estrangeiras, `CHECK` e tipos
-decimais exatos passam a valer de verdade. Também é o banco que se encontra em
-produção — o DuckDB é excelente para análise local, mas não é um servidor
-multiusuário.
-
-**pandas** entre os dois, como o ponto onde o dado pode ser inspecionado antes
-de ser gravado.
-
----
-
-## Manutenção
-
-Para regenerar a amostra e publicar o dataset completo (precisa dos CSVs em
-`data/raw/`):
-
-```bash
-python src/make_sample.py          # regenera data/sample/ + data/manifest.json
-```
-
-Publicar o Release que o `download_data.py` consome:
-
-```bash
-cd data/raw && zip -r ../../olist-dataset.zip *.csv && cd ../..
-gh release create data-v1 olist-dataset.zip --title "Dataset bruto (Olist)"
-```
-
-Sem o `gh` instalado, dá para criar o release pela interface do GitHub em
-*Releases > Draft a new release*, usando a tag `data-v1` e anexando o zip.
-
----
+O porquê de cada escolha está em [pipeline.md](docs/pipeline.md#por-que-estas-ferramentas).
 
 ## Fonte dos dados
 

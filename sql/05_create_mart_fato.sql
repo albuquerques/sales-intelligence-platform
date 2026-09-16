@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS mart.fato_vendas (
     -- -- Medidas NÃO ADITIVAS -------------------------------------------------
     --
     -- Destas duas se tira MÉDIA, nunca soma. "Total de dias de entrega" não
-    -- significa nada. Está escrito aqui e no README justamente para a coluna
+    -- significa nada. Está escrito aqui e em docs/star_schema.md para a coluna
     -- não ser arrastada para um total onde ela mente — no Power BI o padrão
     -- de uma coluna numérica é justamente Soma, então o cuidado é ativo.
     --

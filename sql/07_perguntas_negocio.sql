@@ -24,8 +24,8 @@
 --
 -- 1. RECEITA = preco + frete.
 --
---    É o que o cliente pagou, e é a definição que fecha com a âncora do README
---    (R$ 15.843.553,24 com cancelados). A alternativa — receita só de
+--    É o que o cliente pagou, e é a definição que fecha com a âncora de
+--    docs/dashboard.md (R$ 15.843.553,24 com cancelados). A alternativa — receita só de
 --    mercadoria, frete tratado como repasse — é defensável, e por isso as duas
 --    parcelas aparecem SEPARADAS onde a diferença importa (P2 e P7). O que não
 --    pode é oscilar entre as duas sem avisar: dois números do painel
