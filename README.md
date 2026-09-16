@@ -53,17 +53,18 @@ Recorte de jan/2017 a ago/2018 — R$ 15,7 milhões em 97.905 pedidos.
 git clone https://github.com/albuquerques/sales-intelligence-platform.git
 cd sales-intelligence-platform
 pip install -r requirements.txt
-python src/load_raw.py --sample      # cria sales_intelligence.duckdb, schema raw
+python run.py raw --sample           # cria sales_intelligence.duckdb, schema raw
 ```
 
-**Com PostgreSQL** — o pipeline inteiro, no dataset completo. Exige um servidor
+**Com PostgreSQL** — todas as camadas, no dataset completo. Exige um servidor
 rodando e o `.env` configurado ([passo a passo](docs/pipeline.md#camada-staging--postgresql)):
 
 ```bash
-python src/download_data.py          # baixa ~121 MB e confere os checksums
-python src/load_postgres.py          # CSV -> validação -> schema staging
-python src/build_mart.py             # staging -> modelo estrela, com verificação
+python run.py tudo                   # baixa os dados, RAW, STAGING e MART, nesta ordem
 ```
+
+Leva uns 2 minutos e para na primeira etapa que falhar. Cada camada também roda
+sozinha: `python run.py raw`, `staging` ou `mart`.
 
 **Só o painel** — abra `powerbi/sales_intelligence.pbix` no Power BI Desktop.
 Os dados vêm dentro do arquivo; não precisa de banco.
@@ -108,6 +109,7 @@ powerbi/
   sales_intelligence.pbix            o painel com os dados dentro (abre sem servidor)
   medidas.dax                        as 23 medidas em texto comentado
   tema.json                          a paleta, aplicada por Exibição > Temas
+run.py               ponto de entrada: roda uma camada ou todas, na ordem
 .env.example         modelo das credenciais do PostgreSQL
 ```
 

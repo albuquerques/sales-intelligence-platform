@@ -3,6 +3,10 @@
 Como o dado sai dos arquivos da Olist e chega validado ao PostgreSQL. A camada
 seguinte, o modelo estrela, está em [star_schema.md](star_schema.md).
 
+No dia a dia, `python run.py <camada>` roda as etapas na ordem certa. Os
+comandos deste documento são os scripts que ele chama, com as opções que só
+existem neles — como `--check-only`, que valida sem gravar.
+
 ## Dois níveis independentes
 
 | Nível | Banco | O que precisa | Para quê |
