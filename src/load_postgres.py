@@ -24,10 +24,9 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# O console do Windows usa cp1252 por padrao e quebra ao imprimir acentos.
-for _stream in (sys.stdout, sys.stderr):
-    if hasattr(_stream, "reconfigure"):
-        _stream.reconfigure(encoding="utf-8", errors="replace")
+from comum import PROJECT_ROOT, conecta, configura_console
+
+configura_console()
 
 try:
     import pandas as pd
@@ -35,9 +34,7 @@ try:
 except ModuleNotFoundError as exc:
     sys.exit(f"Dependencia ausente ({exc.name}). Rode: pip install -r requirements.txt")
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DDL_PATH = PROJECT_ROOT / "sql" / "02_create_postgres_tables.sql"
-ENV_PATH = PROJECT_ROOT / ".env"
 SCHEMA = "staging"
 
 # Os 8 status do dataset completo. A amostra so contem 6 (faltam 'approved' e
@@ -172,61 +169,6 @@ TABELAS: tuple[Tabela, ...] = (
         esperado=112_650,
     ),
 )
-
-
-# =============================================================================
-# Conexao
-# =============================================================================
-
-def carrega_env(path: Path) -> None:
-    """
-    Le o .env e joga as variaveis no ambiente do processo.
-
-    Escrito a mao em vez de usar python-dotenv: sao 8 linhas e uma dependencia
-    a menos num projeto que promete rodar logo apos o clone.
-
-    setdefault (e nao os environ[k] = v) faz variaveis ja presentes no ambiente
-    terem precedencia sobre o arquivo -- assim da para sobrescrever a senha em
-    um servidor de CI sem editar nada.
-    """
-    if not path.exists():
-        sys.exit(
-            f"Arquivo de credenciais nao encontrado: {path}\n"
-            f"Crie a partir do modelo:  Copy-Item .env.example .env"
-        )
-    for linha in path.read_text(encoding="utf-8").splitlines():
-        linha = linha.strip()
-        if not linha or linha.startswith("#") or "=" not in linha:
-            continue
-        chave, valor = linha.split("=", 1)
-        os.environ.setdefault(chave.strip(), valor.strip())
-
-
-def conecta() -> psycopg.Connection:
-    """
-    Abre a conexao usando as variaveis PGHOST/PGPORT/PGDATABASE/PGUSER/
-    PGPASSWORD, que o psycopg le do ambiente sozinho -- sao os nomes padrao da
-    libpq, a mesma biblioteca que o psql usa por baixo.
-
-    O erro de conexao e traduzido porque a mensagem crua do PostgreSQL nao
-    ajuda quem esta comecando.
-    """
-    try:
-        return psycopg.connect()
-    except psycopg.OperationalError as exc:
-        host = os.environ.get("PGHOST", "?")
-        port = os.environ.get("PGPORT", "?")
-        db = os.environ.get("PGDATABASE", "?")
-        sys.exit(
-            f"Nao consegui conectar em {host}:{port}/{db}\n"
-            f"\n{str(exc).strip()}\n\n"
-            f"Verifique:\n"
-            f"  1. o servico do PostgreSQL esta rodando?\n"
-            f"       Get-Service *postgres*\n"
-            f"  2. o banco existe?\n"
-            f"       createdb -U postgres {db}\n"
-            f"  3. usuario e senha no .env estao corretos?"
-        )
 
 
 # =============================================================================
@@ -576,7 +518,6 @@ def main() -> int:
 
     # -- Etapa 3: gravar, tudo dentro de UMA transacao -----------------------
     print("\n[3/3] Gravando no PostgreSQL")
-    carrega_env(ENV_PATH)
 
     if not DDL_PATH.exists():
         sys.exit(f"DDL nao encontrado: {DDL_PATH}")

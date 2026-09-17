@@ -25,7 +25,7 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 - **STAGING** valida em Python antes de gravar e garante com constraint no
   banco — o Python explica o erro, a constraint impede que ele entre.
 - **MART** é um modelo estrela: 5 dimensões e a `fato_vendas`, uma linha por
-  item vendido. A carga roda 21 verificações e desfaz tudo se uma falhar.
+  item vendido. A carga roda 23 verificações e desfaz tudo se uma falhar.
 - **Power BI** importa a MART e herda as regras de negócio do SQL. Cada número
   do painel foi conferido contra ele.
 
@@ -97,6 +97,7 @@ sql/
   07_perguntas_negocio.sql        8 perguntas de negócio (somente leitura)
   08_create_mart_views.sql        vw_calendario para o Power BI
 src/
+  comum.py           o que os scripts compartilham: console, hash e conexão
   download_data.py   obtém o dataset completo
   load_raw.py        carrega os CSVs no DuckDB
   load_postgres.py   CSV -> pandas -> validação -> PostgreSQL

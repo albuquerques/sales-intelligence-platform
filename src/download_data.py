@@ -10,13 +10,13 @@ Uso:
     python src/download_data.py --force              # rebaixa mesmo se já existir
 
 Depende apenas da biblioteca padrão, de propósito: precisa funcionar antes de
-`pip install -r requirements.txt`.
+`pip install -r requirements.txt`. O comum.py, de onde vem o sha256, segue a
+mesma regra.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import sys
@@ -26,12 +26,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-# O console do Windows usa cp1252 por padrão e quebra ao imprimir acentos.
-# Sem isto, uma mensagem de erro pode virar UnicodeEncodeError e esconder o
-# problema real que ela tentava reportar.
-for _stream in (sys.stdout, sys.stderr):
-    if hasattr(_stream, "reconfigure"):
-        _stream.reconfigure(encoding="utf-8", errors="replace")
+from comum import PROJECT_ROOT, configura_console, sha256
+
+configura_console()
 
 REPO = "albuquerques/sales-intelligence-platform"
 RELEASE_TAG = "data-v1"
@@ -40,7 +37,6 @@ RELEASE_URL = f"https://github.com/{REPO}/releases/download/{RELEASE_TAG}/{ASSET
 
 KAGGLE_URL = "https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce"
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
 MANIFEST_PATH = PROJECT_ROOT / "data" / "manifest.json"
 
@@ -57,15 +53,6 @@ EXPECTED_FILES = [
     "olist_sellers_dataset.csv",
     "product_category_name_translation.csv",
 ]
-
-
-def _sha256(path: Path) -> str:
-    """Hash do arquivo lido em blocos, para não carregar 59 MB na memória."""
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def missing_files() -> list[str]:
@@ -140,7 +127,7 @@ def validate() -> bool:
         if not path.exists():
             problems.append(f"{name}: ausente")
             continue
-        actual = _sha256(path)
+        actual = sha256(path)
         if actual != meta["sha256"]:
             problems.append(f"{name}: sha256 diverge (esperado {meta['sha256'][:12]}..., obtido {actual[:12]}...)")
         else:

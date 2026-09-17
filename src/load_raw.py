@@ -16,17 +16,15 @@ import argparse
 import sys
 from pathlib import Path
 
-# O console do Windows usa cp1252 por padrão e quebra ao imprimir acentos.
-for _stream in (sys.stdout, sys.stderr):
-    if hasattr(_stream, "reconfigure"):
-        _stream.reconfigure(encoding="utf-8", errors="replace")
+from comum import PROJECT_ROOT, configura_console
+
+configura_console()
 
 try:
     import duckdb
 except ModuleNotFoundError:
     sys.exit("duckdb nao instalado. Rode: pip install -r requirements.txt")
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DDL_PATH = PROJECT_ROOT / "sql" / "01_create_raw_tables.sql"
 DEFAULT_DB = PROJECT_ROOT / "sales_intelligence.duckdb"
 

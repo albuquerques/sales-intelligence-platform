@@ -24,25 +24,15 @@ from __future__ import annotations
 import argparse
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 
-# O console do Windows usa cp1252 por padrao e quebra ao imprimir acentos.
-for _stream in (sys.stdout, sys.stderr):
-    if hasattr(_stream, "reconfigure"):
-        _stream.reconfigure(encoding="utf-8", errors="replace")
+from comum import PROJECT_ROOT, conecta, configura_console
+
+configura_console()
 
 try:
     import psycopg
 except ModuleNotFoundError as exc:
     sys.exit(f"Dependencia ausente ({exc.name}). Rode: pip install -r requirements.txt")
-
-# Reaproveita a leitura do .env e a conexao traduzida do pipeline da STAGING --
-# sao o mesmo banco e as mesmas credenciais. Duplicar isso aqui criaria dois
-# lugares para corrigir quando a conexao mudar.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from load_postgres import carrega_env, conecta, ENV_PATH  # noqa: E402
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # A ORDEM DESTA TUPLA E A ORDEM DE EXECUCAO, e ela nao e arbitraria: a fato tem
 # FK para as cinco dimensoes, entao o DDL dela exige que elas ja existam, e a
@@ -542,8 +532,6 @@ def main() -> int:
         if not caminho.exists():
             sys.exit(f"Arquivo SQL nao encontrado: {caminho}")
 
-    carrega_env(ENV_PATH)
-
     # UMA transacao para os quatro arquivos. Ou as cinco dimensoes e a fato
     # ficam coerentes entre si, ou o schema fica exatamente como estava -- nunca
     # meio caminho, que e o estado em que ninguem sabe se pode confiar no banco.
@@ -619,7 +607,7 @@ def main() -> int:
         print("  Estatisticas atualizadas e espaco liberado para reuso")
 
     print("\nModelo estrela pronto em mart: 5 dimensoes + fato_vendas.")
-    print("Proxima etapa: responder as primeiras perguntas de negocio em SQL.")
+    print("Para o painel enxergar a carga nova: Power BI > Pagina Inicial > Atualizar.")
     print("\nInspecione com:")
     print('  psql -U postgres -d sales_intelligence -c "\\dt mart.*"')
     return 0

@@ -33,23 +33,20 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# O console do Windows usa cp1252 por padrão e quebra ao imprimir acentos.
-for _stream in (sys.stdout, sys.stderr):
-    if hasattr(_stream, "reconfigure"):
-        _stream.reconfigure(encoding="utf-8", errors="replace")
+from comum import PROJECT_ROOT, configura_console, sha256
+
+configura_console()
 
 try:
     import duckdb
 except ModuleNotFoundError:
     sys.exit("duckdb nao instalado. Rode: pip install -r requirements.txt")
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
 SAMPLE_DIR = PROJECT_ROOT / "data" / "sample"
 MANIFEST_PATH = PROJECT_ROOT / "data" / "manifest.json"
@@ -70,14 +67,6 @@ CSV = {
 # tem ~1M de linhas para 19 mil prefixos; sem esse corte a amostra passaria de
 # 100 MB e perderia o propósito.
 GEO_POINTS_PER_ZIP = 3
-
-
-def sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def check_raw() -> None:

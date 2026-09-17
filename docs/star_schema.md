@@ -74,7 +74,7 @@ e um `CHECK` obriga as duas a concordarem:
 
 ## O que prova que a fato está certa
 
-`build_mart.py` roda **21 verificações capazes de reprovar** (mais 12
+`build_mart.py` roda **23 verificações capazes de reprovar** (mais 12
 informativas) e desfaz a transação inteira se qualquer uma falhar — modelo que
 não passou não fica gravado. As três que carregam o peso:
 
