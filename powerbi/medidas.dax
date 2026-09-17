@@ -4,10 +4,10 @@
 //
 // POR QUE ESTE ARQUIVO EXISTE
 //
-// O .pbix é um binário: o git guarda, mas não sabe ler. Um `git diff` nele não
-// diz nada, e uma medida errada entra no histórico sem deixar rastro legível.
-// Este arquivo é a fonte legível das medidas — o que um recrutador consegue ler
-// no GitHub, e o que permite revisar uma mudança de regra de negócio.
+// O modelo é salvo em TMDL (sales_intelligence.SemanticModel/), que já é texto
+// — mas guarda cada medida numa linha só, sem comentário nenhum. Este arquivo é
+// a fonte legível das medidas: o que um recrutador consegue ler no GitHub, e o
+// que permite revisar uma mudança de regra de negócio.
 //
 // Ele NÃO é executado por nada. É a documentação de referência do que está
 // dentro do modelo. Ao alterar uma medida no Power BI, alterar aqui também.

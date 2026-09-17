@@ -10,7 +10,7 @@ São dois arquivos, e eles não pedem a mesma coisa:
 
 | Arquivo | Precisa de | Para quê |
 |---|---|---|
-| `powerbi/sales_intelligence.pbix` | só o Power BI Desktop | ver o painel — os dados vêm dentro |
+| `sales_intelligence.pbix` ([baixar](https://github.com/albuquerques/sales-intelligence-platform/releases/download/dashboard-v1/sales_intelligence.pbix)) | só o Power BI Desktop | ver o painel — os dados vêm dentro |
 | `powerbi/sales_intelligence.pbip` | PostgreSQL com a `mart` carregada | editar — é a fonte, em texto |
 
 Ao abrir o `.pbip` numa máquina nova, a conexão pede:
@@ -120,9 +120,30 @@ Dá para revisar num diff, e dá para escrever direto no arquivo.
 
 Custo medido e aceito: **o PBIP não guarda os dados importados**, só a
 definição. Abrir o `.pbip` exige o PostgreSQL de pé. Por isso os dois níveis
-convivem, como já acontece entre DuckDB e PostgreSQL: o `.pbix`, versionado em
-marcos, preserva a propriedade de abrir e ver o painel sem instalar nada. Ele
-deixou de ser a fonte e passou a ser artefato de saída.
+convivem, como já acontece entre DuckDB e PostgreSQL: o `.pbix` preserva a
+propriedade de abrir e ver o painel sem instalar nada. Ele deixou de ser a
+fonte e passou a ser artefato de saída.
+
+E, como artefato, saiu do git. Binário versionado entra inteiro a cada versão e
+nunca mais sai do histórico; o `.pbix` é publicado como [GitHub
+Release](https://github.com/albuquerques/sales-intelligence-platform/releases/tag/dashboard-v1),
+o mesmo caminho que os CSVs brutos já seguiam.
+
+### Publicando uma versão nova do `.pbix`
+
+Quando o painel mudar, gere o binário a partir do `.pbip`: *Arquivo → Salvar
+como → Procurar*, e troque o campo **Tipo** para `Arquivo do Power BI (*.pbix)`
+— ele vem preenchido com `.pbip`, e salvar sem trocar só reescreve o projeto.
+
+Com a mudança do PBIP já commitada e enviada, publique um Release novo e troque
+o número da versão no link deste documento e do README:
+
+```bash
+gh release create dashboard-v2 powerbi/sales_intelligence.pbix --title "Painel Power BI"
+```
+
+Um Release por versão, em vez de substituir o arquivo do `dashboard-v1`: cada
+tag aponta para o commit do PBIP que gerou aquele binário.
 
 ---
 

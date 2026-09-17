@@ -67,8 +67,9 @@ python run.py tudo                   # baixa os dados, RAW, STAGING e MART, nest
 Leva uns 2 minutos e para na primeira etapa que falhar. Cada camada também roda
 sozinha: `python run.py raw`, `staging` ou `mart`.
 
-**Só o painel** — abra `powerbi/sales_intelligence.pbix` no Power BI Desktop.
-Os dados vêm dentro do arquivo; não precisa de banco.
+**Só o painel** — [baixe o `sales_intelligence.pbix`](https://github.com/albuquerques/sales-intelligence-platform/releases/download/dashboard-v1/sales_intelligence.pbix)
+(10 MB) e abra no Power BI Desktop. Os dados vêm dentro do arquivo; não precisa
+de banco.
 
 ## Documentação
 
@@ -108,7 +109,7 @@ powerbi/
   sales_intelligence.pbip            ponteiro do projeto (formato PBIP)
   sales_intelligence.Report/         os visuais, em JSON — um arquivo por visual
   sales_intelligence.SemanticModel/  o modelo e as medidas, em TMDL
-  sales_intelligence.pbix            o painel com os dados dentro (abre sem servidor)
+  sales_intelligence.pbix            o painel com os dados dentro (gitignored, fica no Release)
   medidas.dax                        as 23 medidas em texto comentado
   tema.json                          a paleta, aplicada por Exibição > Temas
 run.py               ponto de entrada: roda uma camada ou todas, na ordem
