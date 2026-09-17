@@ -29,8 +29,8 @@ CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
 - **Power BI** importa a MART e herda as regras de negócio do SQL. Cada número
   do painel foi conferido contra ele.
 
-**Estado atual:** as quatro camadas e o painel estão prontos. Em andamento:
-organização do repositório e documentação.
+**Estado atual:** as quatro camadas e o painel estão prontos, e o repositório
+foi reorganizado. Em andamento: o diagrama da arquitetura e os insights.
 
 ## O que o painel mostra
 
