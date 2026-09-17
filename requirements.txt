@@ -1,6 +1,20 @@
-# Caminho padrão (roda logo após o clone, sem servidor):
-duckdb>=1.1.0
+# Versões fixadas com ==: as que passaram no pipeline completo
+# (python run.py tudo) em 16/09/2026, no Python 3.14.
+#
+# Com >=, cada instalação nova pegava a versão mais recente do dia — e o
+# projeto é desenvolvido em duas máquinas. Um major novo (o pandas 3.0 trocou o
+# tipo padrão de texto) não pode entrar sem ninguém perceber.
+#
+# Só as dependências DIRETAS estão fixadas; as indiretas (numpy, tzdata) o pip
+# resolve a partir destas. Fixar o numpy também seria mais rígido, mas o 2.5
+# exige Python 3.12, e o pandas sozinho aceita a partir do 3.11.
+#
+# Para atualizar: troque a versão aqui, rode `python run.py tudo` e só então
+# faça o commit.
 
-# Caminho PostgreSQL (opcional — exige um servidor rodando, ver README):
-pandas>=2.2
-psycopg[binary]>=3.2
+# Caminho sem servidor (roda logo após o clone):
+duckdb==1.5.5
+
+# Caminho PostgreSQL (exige um servidor rodando, ver docs/pipeline.md):
+pandas==3.0.5
+psycopg[binary]==3.3.4

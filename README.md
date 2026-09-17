@@ -47,7 +47,8 @@ Recorte de jan/2017 a ago/2018 — R$ 15,7 milhões em 97.905 pedidos.
 
 ## Começando
 
-**Sem servidor** — só Python. A amostra de 3.000 pedidos já vem no repositório:
+**Sem servidor** — só Python 3.11 ou mais novo (desenvolvido no 3.14). A
+amostra de 3.000 pedidos já vem no repositório:
 
 ```bash
 git clone https://github.com/albuquerques/sales-intelligence-platform.git
