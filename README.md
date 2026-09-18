@@ -49,7 +49,8 @@ Ela existe para o projeto rodar logo após o clone, sem instalar servidor.
   do painel foi conferido contra ele.
 
 **Estado atual:** as quatro camadas e o painel estão prontos, o repositório foi
-reorganizado e a arquitetura está diagramada. Em andamento: os insights.
+reorganizado, a arquitetura está diagramada e os insights estão escritos. Em
+andamento: a revisão final deste README.
 
 ## O que os dados mostram
 
