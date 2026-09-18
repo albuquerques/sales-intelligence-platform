@@ -51,18 +51,23 @@ Ela existe para o projeto rodar logo após o clone, sem instalar servidor.
 **Estado atual:** as quatro camadas e o painel estão prontos, o repositório foi
 reorganizado e a arquitetura está diagramada. Em andamento: os insights.
 
-## O que o painel mostra
+## O que os dados mostram
 
-Recorte de jan/2017 a ago/2018 — R$ 15,7 milhões em 97.905 pedidos.
+Recorte de jan/2017 a ago/2018: R$ 15,7 milhões em 97.905 pedidos.
 
-- **97% dos clientes compram uma vez e não voltam.** São 2.874 recorrentes em
-  94.703. A diferença entre receita por cliente (R$ 165,61) e ticket médio
-  (R$ 160,19) é o tamanho inteiro do efeito: R$ 5,42.
-- **Não existe carro-chefe.** São precisas 18 das 74 categorias para chegar a
-  80% da receita.
-- **A promessa de prazo é calibrada ao contrário.** Alagoas demora três vezes o
-  que São Paulo demora e atrasa cinco vezes mais — e ainda recebe folga de
-  prazo menor que a do Paraná.
+- **Entrega atrasada destrói a avaliação.** A nota média cai de 4,29 no prazo
+  para 1,70 com 8+ dias de atraso. As entregas atrasadas são 6,7% das
+  avaliações e 36,7% das de 1 estrela.
+- **O atraso é previsível.** O prazo prometido soma uma folga parecida em todo
+  o país, e onde a entrega é longa ela vira pouca margem: nos 24 estados com
+  volume, quanto menor a margem, maior o atraso (correlação −0,87). Os seis
+  estados de menor margem são do Nordeste.
+- **Quase toda venda é a primeira venda de alguém.** 96,7% dos pedidos; só
+  3,03% dos clientes voltam. Por isso a receita que parou de crescer em 2018 é,
+  na prática, aquisição que parou de crescer.
+
+As seis conclusões, com o que eu faria a respeito de cada uma, estão em
+[docs/insights.md](docs/insights.md).
 
 ## Começando
 
@@ -94,6 +99,7 @@ de banco.
 
 | Documento | O que tem |
 |---|---|
+| [insights.md](docs/insights.md) | as seis conclusões para o negócio, com recomendação e onde conferir |
 | [pipeline.md](docs/pipeline.md) | RAW e STAGING: a amostra, a validação, as decisões de carga |
 | [star_schema.md](docs/star_schema.md) | MART: o grão, as verificações e as perguntas de negócio em SQL |
 | [dashboard.md](docs/dashboard.md) | Power BI: como abrir, as medidas e o que cada página mostra |
@@ -117,6 +123,8 @@ sql/
   06_load_mart_fato.sql           carga da fato (chave natural -> substituta)
   07_perguntas_negocio.sql        8 perguntas de negócio (somente leitura)
   08_create_mart_views.sql        vw_calendario para o Power BI
+  09_insights.sql                 os números de docs/insights.md (somente leitura)
+  10_avaliacoes.sql               nota de avaliação × atraso (DuckDB, camada RAW)
 src/
   comum.py           o que os scripts compartilham: console, hash e conexão
   download_data.py   obtém o dataset completo

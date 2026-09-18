@@ -252,9 +252,10 @@ Móveis Decoração ....... frete 23,68% do valor da mercadoria  ·  item médio
 Relógios Presentes ..... frete  8,37%                          ·  item médio R$ 200,31
 ```
 
-Quase três vezes de diferença, e não é ineficiência de logística: um relógio de
-R$ 300 pesa 200 gramas, uma estante de R$ 300 pesa 20 quilos. As duas séries
-estão no mesmo visual — colunas descendo, linha subindo — porque em dois
+Quase três vezes de diferença, e não é ineficiência de logística: o item médio
+de Móveis Decoração pesa 2,65 kg e custa R$ 87,69; o de Relógios Presentes pesa
+0,58 kg e custa R$ 200,31. Frete cobra peso, e pesa mais onde há muito peso
+para pouco valor. As duas séries estão no mesmo visual (colunas descendo, linha subindo) porque em dois
 gráficos separados a comparação dependeria de o leitor cruzar duas listas
 ordenadas de formas diferentes.
 
@@ -311,7 +312,7 @@ iteração, recalcula quantos pedidos distintos ele tem naquele contexto. A
 coluna da dimensão continua útil para outra coisa — **segmentar** novos contra
 recorrentes num slicer, onde ignorar o período é o comportamento desejado.
 
-### A promessa de prazo é calibrada ao contrário
+### A promessa de prazo dá pouca margem onde a entrega é longa
 
 ```
        prazo    atraso    folga do prazo
@@ -321,13 +322,17 @@ SP ....8,6 d      4,4%       -11,2
 PR ... 11,9 d     3,9%       -13,3
 ```
 
-Alagoas demora três vezes o que São Paulo demora e atrasa cinco vezes mais. Mas
-o achado está na última coluna: a folga de AL é de **8,7 dias**, menor que a do
-Paraná (**13,3**). **O estado que mais precisa de prazo folgado é o que menos
-recebe** — a promessa é mais apertada justamente onde a operação é pior.
+Alagoas demora três vezes o que São Paulo demora e atrasa cinco vezes mais. A
+última coluna ajuda a explicar: AL recebe **8,7 dias** de folga, menos que o
+Paraná (**13,3**): pouca folga somada a um prazo longo.
+
+A tabela não sustenta uma regra de "quem mais precisa recebe menos": nos 24
+estados com volume, prazo longo e folga em dias quase não andam juntos. O que
+explica o atraso no país inteiro é a folga em **proporção** ao prazo real, e a
+análise está no [insight 2](insights.md#2-o-atraso-é-previsível-depende-da-margem-da-promessa).
 
 Cumprir prazo inflado não é pontualidade, e o inverso também vale: o atraso de
-AL é em parte uma promessa mal calibrada.
+AL é em parte uma promessa curta demais para o destino.
 
 > **Ressalva estatística:** as três piores posições do gráfico são estados de
 > volume mínimo — RR tem 45 itens entregues, AP tem 81, AM tem 163. A média é
@@ -342,10 +347,11 @@ RJ .... 15,06 dias  ·  ticket R$ 166,37
 BA .... 19,19 dias  ·  ticket R$ 181,44
 ```
 
-Quanto mais longe, maior o ticket — e não é porque o interior compra produtos
-mais caros. `Ticket Médio` inclui frete, e frete cresce com a distância. O
-cliente distante paga mais pelo mesmo carrinho e espera mais tempo por ele.
+Quanto mais longe, maior o ticket, mas não só por causa do frete. `Ticket
+Médio` inclui frete, e o frete por pedido vai de R$ 17,37 em SP a R$ 29,85 na
+BA; isso explica só um terço da diferença entre os dois tickets. O resto é
+mercadoria mais cara: o cliente distante não compra o mesmo carrinho. Uma
+leitura possível está no [insight 4](insights.md#4-o-frete-pesa-mais-onde-o-produto-é-barato-e-o-cliente-está-longe).
 
 Na página de Produtos o frete explicava a diferença entre categorias
-(densidade de valor); aqui explica a diferença entre estados (distância). É o
-mesmo eixo visto de dois ângulos.
+(densidade de valor); aqui ele reaparece entre estados, pela distância.
