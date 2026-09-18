@@ -532,7 +532,7 @@ def main() -> int:
         if not caminho.exists():
             sys.exit(f"Arquivo SQL nao encontrado: {caminho}")
 
-    # UMA transacao para os quatro arquivos. Ou as cinco dimensoes e a fato
+    # UMA transacao para os cinco arquivos. Ou as cinco dimensoes e a fato
     # ficam coerentes entre si, ou o schema fica exatamente como estava -- nunca
     # meio caminho, que e o estado em que ninguem sabe se pode confiar no banco.
     #

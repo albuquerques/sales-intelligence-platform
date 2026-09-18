@@ -14,11 +14,30 @@ quanto vende, o quê, para quem e em quanto tempo entrega.
 
 Modelo **medallion**, em camadas:
 
+```mermaid
+flowchart TD
+    REL["Release data-v1<br/>dataset completo, 121 MB"]
+    AMO["data/sample/<br/>amostra versionada"]
+    CSV["CSVs da Olist"]
+    RAW[("RAW (bronze) · DuckDB<br/>tudo VARCHAR, roda sem servidor")]
+    VAL{{"validação em pandas"}}
+    STG[("STAGING (prata) · PostgreSQL<br/>tipado, com PK, FK e CHECK")]
+    MART[("MART (ouro) · PostgreSQL<br/>modelo estrela")]
+    PBI["Power BI<br/>3 páginas, 23 medidas DAX"]
+    PBIX["Release dashboard-v1<br/>o painel em .pbix"]
+
+    REL -->|download_data.py| CSV
+    AMO --> CSV
+    CSV --> RAW
+    CSV --> VAL
+    VAL -->|só grava se tudo passar| STG
+    STG -->|"SQL + 23 verificações"| MART
+    MART -->|Import| PBI
+    PBI --> PBIX
 ```
-CSV  ->  RAW (bronze)  ->  STAGING (prata)  ->  MART (ouro)  ->  Power BI
-         DuckDB            PostgreSQL           PostgreSQL         3 páginas
-         tudo VARCHAR      tipado e validado    modelo estrela     23 medidas DAX
-```
+
+RAW e STAGING leem os mesmos CSVs, lado a lado: a RAW não alimenta a STAGING.
+Ela existe para o projeto rodar logo após o clone, sem instalar servidor.
 
 - **RAW** guarda o dado como ele chegou, defeitos incluídos: eles são tratados
   adiante, não escondidos na entrada.

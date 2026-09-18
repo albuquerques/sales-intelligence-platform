@@ -10,17 +10,86 @@ python src/build_mart.py                 # cria/atualiza dimensões + fato e ver
 python src/build_mart.py --so-verificar  # só roda as verificações, não escreve
 ```
 
-```
-              dim_data (1.828)          dim_produto (32.951)
-                       \                   /
-                        \                 /
-   dim_cliente (96.096) ── fato_vendas ── dim_vendedor (3.095)
-                             112.650      /
-                                \        /
-                          dim_status_pedido (8)
+```mermaid
+erDiagram
+    %% As três últimas relações estão escritas ao contrário (fato -> dimensão)
+    %% de propósito: quem vem primeiro fica em cima, e isso põe essas dimensões
+    %% ABAIXO da fato. Com as cinco numa fileira só, o desenho ficava largo e o
+    %% texto encolhia até não dar para ler. O significado não muda: muitas
+    %% vendas para uma linha de dimensão.
+    dim_data          ||--o{ fato_vendas : "compra (ativa)"
+    dim_data          ||--o{ fato_vendas : "entrega (inativa)"
+    dim_data          ||--o{ fato_vendas : "previsão (inativa)"
+    dim_cliente       ||--o{ fato_vendas : "quem comprou"
+    fato_vendas }o--|| dim_status_pedido : "situação do pedido"
+    fato_vendas }o--|| dim_produto       : "o que foi vendido"
+    fato_vendas }o--|| dim_vendedor      : "quem vendeu"
+
+    fato_vendas {
+        varchar  order_id          PK "o grão é um item de um pedido"
+        smallint order_item_id     PK
+        int      sk_cliente        FK
+        int      sk_produto        FK
+        int      sk_vendedor       FK
+        smallint sk_status         FK
+        int      sk_data_compra    FK
+        int      sk_data_entrega   FK "-1 quando não houve entrega"
+        int      sk_data_prevista  FK
+        numeric  preco                "aditiva"
+        numeric  frete                "aditiva"
+        smallint dias_entrega         "não aditiva, só média"
+        smallint dias_vs_previsto     "não aditiva, só média"
+    }
+    dim_data {
+        int      sk_data        PK "AAAAMMDD"
+        date     data           UK
+        char     ano_mes           "2017-05, ordena como texto"
+        varchar  nome_mes
+        boolean  eh_fim_semana
+    }
+    dim_cliente {
+        int      sk_cliente          PK
+        varchar  customer_unique_id  UK "a pessoa, não o pedido"
+        varchar  cidade
+        char     estado
+        smallint qtd_pedidos
+    }
+    dim_produto {
+        int      sk_produto  PK
+        varchar  product_id  UK
+        varchar  categoria
+        int      peso_g
+    }
+    dim_vendedor {
+        int      sk_vendedor  PK
+        varchar  seller_id    UK
+        varchar  cidade
+        char     estado
+    }
+    dim_status_pedido {
+        smallint sk_status         PK
+        varchar  status
+        smallint ordem_funil          "ordena o funil"
+        boolean  eh_venda_efetiva     "filtra toda medida de receita"
+        boolean  eh_entregue
+    }
 ```
 
-Os quatro arquivos SQL rodam **numa transação só**. Ou o modelo inteiro fica
+| Tabela | Linhas |
+|---|---|
+| `fato_vendas` | 112.650 |
+| `dim_cliente` | 96.096 |
+| `dim_produto` | 32.951 |
+| `dim_vendedor` | 3.095 |
+| `dim_data` | 1.828 |
+| `dim_status_pedido` | 8 |
+
+O diagrama mostra só as colunas que carregam decisão; a lista completa está em
+[`sql/03`](../sql/03_create_mart_dimensions.sql) e
+[`sql/05`](../sql/05_create_mart_fato.sql). `PK` é chave primária, `FK` aponta
+para uma dimensão, `UK` é a chave natural — o fio de volta até o CSV de origem.
+
+Os cinco arquivos SQL rodam **numa transação só**. Ou o modelo inteiro fica
 coerente, ou o schema fica exatamente como estava — uma fato gravada apontando
 para uma dimensão que não foi é o pior estado possível deste banco, porque ele
 *parece* inteiro.
