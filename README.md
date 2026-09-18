@@ -48,8 +48,8 @@ Ela existe para o projeto rodar logo após o clone, sem instalar servidor.
 - **Power BI** importa a MART e herda as regras de negócio do SQL. Cada número
   do painel foi conferido contra ele.
 
-**Estado atual:** as quatro camadas e o painel estão prontos, e o repositório
-foi reorganizado. Em andamento: o diagrama da arquitetura e os insights.
+**Estado atual:** as quatro camadas e o painel estão prontos, o repositório foi
+reorganizado e a arquitetura está diagramada. Em andamento: os insights.
 
 ## O que o painel mostra
 
