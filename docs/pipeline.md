@@ -1,11 +1,11 @@
-# Pipeline — do CSV ao PostgreSQL
+# Pipeline: do CSV ao PostgreSQL
 
 Como o dado sai dos arquivos da Olist e chega validado ao PostgreSQL. A camada
 seguinte, o modelo estrela, está em [star_schema.md](star_schema.md).
 
 No dia a dia, `python run.py <camada>` roda as etapas na ordem certa. Os
 comandos deste documento são os scripts que ele chama, com as opções que só
-existem neles — como `--check-only`, que valida sem gravar.
+existem neles, como `--check-only`, que valida sem gravar.
 
 ## Dois níveis independentes
 
@@ -17,7 +17,7 @@ existem neles — como `--check-only`, que valida sem gravar.
 O nível RAW existe para que o repositório não dependa de nada externo: DuckDB é
 uma biblioteca lendo um arquivo, e a amostra em `data/sample/` já vem
 versionada. O nível STAGING usa PostgreSQL porque `FOREIGN KEY`, `CHECK` e
-`NUMERIC` exato só valem de verdade num servidor — e servidor não tem como ser
+`NUMERIC` exato só valem de verdade num servidor, e servidor não tem como ser
 embarcado no clone. Um não substitui o outro.
 
 ---
@@ -35,7 +35,7 @@ não roda depois do clone também não serve. A solução tem três camadas:
 | Manifesto | `data/manifest.json` | SHA256 + contagens; valida o download |
 
 A amostra é **referencialmente íntegra**. Não são "as primeiras N linhas de cada
-arquivo" — isso quebraria todos os JOINs. São 3.000 pedidos sorteados, dos quais
+arquivo", porque isso quebraria todos os JOINs. São 3.000 pedidos sorteados, dos quais
 todo o resto é derivado em cascata:
 
 ```
@@ -50,8 +50,8 @@ orders (sorteio)
 
 O `src/make_sample.py` verifica que não sobrou nenhuma referência órfã antes de
 gravar. Os defeitos de qualidade do dataset original (`review_id` duplicado, BOM
-no cabeçalho, nulos correlacionados em `products`) foram preservados de propósito
-— eles são parte do que o pipeline precisa tratar.
+no cabeçalho, nulos correlacionados em `products`) foram preservados de propósito:
+eles são parte do que o pipeline precisa tratar.
 
 Essa integridade não é preciosismo: sem ela, a carga no PostgreSQL
 (`load_postgres.py --sample`) falharia nas chaves estrangeiras. A amostra
@@ -59,7 +59,7 @@ alimenta os dois níveis.
 
 ---
 
-## Camada RAW — DuckDB
+## Camada RAW: DuckDB
 
 ```bash
 python src/load_raw.py --sample     # a amostra versionada
@@ -88,10 +88,10 @@ A camada RAW é uma cópia fiel da origem, e isso é uma decisão deliberada:
 
 ---
 
-## Camada STAGING — PostgreSQL
+## Camada STAGING: PostgreSQL
 
 > **Exige um servidor PostgreSQL rodando.** Não é opcional no sentido de
-> acessório — é aqui que as garantias de integridade existem. É opcional apenas
+> acessório: é aqui que as garantias de integridade existem. É opcional apenas
 > no sentido de que o nível RAW continua funcionando sem isso.
 
 Pipeline `CSV → pandas → validação → PostgreSQL`:
@@ -138,12 +138,12 @@ Saída da validação no dataset completo (`--check-only`):
   OK       order_items    sem problemas
 ```
 
-Sem o `--check-only`, a etapa `[3/3]` grava as seis tabelas — 1.347.741 linhas —
+Sem o `--check-only`, a etapa `[3/3]` grava as seis tabelas (1.347.741 linhas)
 numa transação só.
 
 ### Por que o pandas está no meio
 
-No `load_raw.py` o DuckDB lê o CSV sozinho, dentro do `INSERT` — o dado nunca
+No `load_raw.py` o DuckDB lê o CSV sozinho, dentro do `INSERT`, e o dado nunca
 passa pela memória do Python. É rápido, mas não existe ponto onde inspecionar o
 dado entre ler e gravar. O DataFrame é esse ponto.
 
@@ -160,7 +160,7 @@ dado entre ler e gravar. O DataFrame é esse ponto.
 | Domínio fechado (`order_status`) | `order_status: 1 valores fora do domínio` |
 | Integridade referencial | `order_id: 1 valores sem correspondência em orders.order_id` |
 
-O PostgreSQL pegaria quase tudo isso sozinho — mas diria apenas
+O PostgreSQL pegaria quase tudo isso sozinho, mas diria apenas
 `violates foreign key constraint "fk_order_items_order"`, sem dizer quantas
 linhas nem quais. **A constraint garante; o Python explica.** Por isso o projeto
 tem os dois: validação em Python para diagnosticar, constraint no banco para
@@ -173,7 +173,7 @@ valer também fora deste script.
   todos os problemas de uma vez, em vez de um por execução.
 - **`COPY`, não `df.to_sql()`.** O `to_sql` gera `INSERT`s e exige o SQLAlchemy;
   para as 112 mil linhas de `order_items` são minutos. O `COPY` é o carregador
-  em massa nativo — segundos.
+  em massa nativo: leva segundos.
 - **Uma única transação.** Ou as 6 tabelas entram, ou o banco fica exatamente
   como estava. Nunca meio carregado.
 - **Idempotente.** `TRUNCATE` antes da carga; rodar duas vezes dá o mesmo
@@ -200,7 +200,7 @@ tanto o `psql` quanto o `psycopg` leem sem configuração extra.
 | Objetivo | receber o dado como ele é | garantir que ele é válido | responder perguntas |
 
 Detalhes de tipo em [`sql/02_create_postgres_tables.sql`](../sql/02_create_postgres_tables.sql):
-`NUMERIC` em dinheiro (nunca `FLOAT` — ponto flutuante binário não representa
+`NUMERIC` em dinheiro (nunca `FLOAT`: ponto flutuante binário não representa
 R$ 0,10 exatamente e o faturamento fecha com diferença de centavos), `CHAR(5)`
 no CEP (como inteiro, `01037` viraria `1037`), `TIMESTAMP` sem fuso (a origem
 não informa fuso, e inventar um é pior que não ter).
@@ -215,7 +215,7 @@ permite o projeto rodar logo após o clone.
 
 **PostgreSQL** nas camadas STAGING e MART: é onde chaves estrangeiras, `CHECK` e
 tipos decimais exatos passam a valer de verdade. Também é o banco que se
-encontra em produção — o DuckDB é excelente para análise local, mas não é um
+encontra em produção. O DuckDB é excelente para análise local, mas não é um
 servidor multiusuário.
 
 **pandas** entre os dois, como o ponto onde o dado pode ser inspecionado antes

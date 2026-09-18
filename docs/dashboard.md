@@ -1,6 +1,6 @@
 # O painel em Power BI
 
-Três páginas — Visão Geral, Produtos e Clientes — sobre a camada MART descrita
+Três páginas (Visão Geral, Produtos e Clientes) sobre a camada MART descrita
 em [star_schema.md](star_schema.md). Este documento cobre como abrir o painel,
 como o modelo semântico foi construído e provado, e o que cada página mostra.
 
@@ -10,8 +10,8 @@ São dois arquivos, e eles não pedem a mesma coisa:
 
 | Arquivo | Precisa de | Para quê |
 |---|---|---|
-| `sales_intelligence.pbix` ([baixar](https://github.com/albuquerques/sales-intelligence-platform/releases/download/dashboard-v1/sales_intelligence.pbix)) | só o Power BI Desktop | ver o painel — os dados vêm dentro |
-| `powerbi/sales_intelligence.pbip` | PostgreSQL com a `mart` carregada | editar — é a fonte, em texto |
+| `sales_intelligence.pbix` ([baixar](https://github.com/albuquerques/sales-intelligence-platform/releases/download/dashboard-v1/sales_intelligence.pbix)) | só o Power BI Desktop | ver o painel, com os dados dentro |
+| `powerbi/sales_intelligence.pbip` | PostgreSQL com a `mart` carregada | editar: é a fonte, em texto |
 
 Ao abrir o `.pbip` numa máquina nova, a conexão pede:
 
@@ -24,7 +24,7 @@ Autenticação ..... Banco de Dados  (não Windows), usuário postgres
 
 Se o PostgreSQL local não tiver SSL configurado, o Power BI falha com "não
 damos suporte à conexão criptografada". Desmarque **Criptografar conexão** na
-mesma janela de credenciais — em `localhost`, é seguro.
+mesma janela de credenciais. Em `localhost`, é seguro.
 
 ### Duas configurações por máquina
 
@@ -44,17 +44,17 @@ visual abrevie `97.905` para "98 mil" por conta própria.
 
 ## O modelo semântico
 
-`powerbi/sales_intelligence.pbip` — as 6 tabelas da `mart` em modo **Import**,
+`powerbi/sales_intelligence.pbip`: as 6 tabelas da `mart` em modo **Import**,
 7 relações, `dim_data` marcada como tabela de datas e 23 medidas DAX.
 
 **A camada semântica não repete regra de negócio; ela herda.** As duas
 definições do `sql/07` (receita = `preco + frete`; dinheiro exclui cancelado)
-valem idênticas no DAX — se divergissem, o painel discordaria do arquivo que
+valem idênticas no DAX. Se divergissem, o painel discordaria do arquivo que
 documenta as respostas e não haveria como saber qual está certo.
 
 ### As medidas em texto comentado
 
-O modelo é salvo em TMDL, que já é texto — mas guarda cada medida numa linha só,
+O modelo é salvo em TMDL, que já é texto, mas guarda cada medida numa linha só,
 sem comentário nenhum. As 23 medidas também vivem em
 [`powerbi/medidas.dax`](../powerbi/medidas.dax), formatadas e explicadas: é o
 que se lê no GitHub, e o que permite revisar uma mudança de regra. O TMDL é o
@@ -64,7 +64,7 @@ que executa; os dois precisam andar juntos.
 
 Nenhuma medida foi aceita por parecer certa. Cada uma foi conferida contra um
 número que o `build_mart.py` já tinha verificado. Os valores são sobre o
-**dataset inteiro**, sem o recorte de período das páginas — é o que mostra a
+**dataset inteiro**, sem o recorte de período das páginas. É o que mostra a
 página *Conferência* do relatório.
 
 | Medida | Valor | Medida | Valor |
@@ -87,33 +87,33 @@ centavo.
 
 **Import, não DirectQuery.** Dado congelado em out/2018 e 112 mil linhas: o
 VertiPaq comprime tudo e o DAX fica completo. DirectQuery serve para dado que
-muda e volume que não cabe — nenhum dos dois é o caso.
+muda e volume que não cabe, e nenhum dos dois é o caso.
 
 **`mart.vw_calendario` ([`sql/08`](../sql/08_create_mart_views.sql)).** O Power BI
 recusa marcar como tabela de datas uma coluna com nulos, e a `dim_data` tem um:
 o membro `-1`, criado na etapa da fato para que os itens sem entrega não sumam
-num `INNER JOIN`. A tabela mantém o membro — é destino da FK; a view o remove —
+num `INNER JOIN`. A tabela mantém o membro, porque é destino da FK; a view o remove, porque
 é exigência da camada semântica. **As duas camadas querem coisas diferentes e as
 duas estão certas.** Medido antes de decidir: só `sk_data_entrega` chega ao
 `-1`, e essa é justamente a relação inativa.
 
 **Nenhuma transformação no Power Query.** Ele foi aberto uma vez, para trocar a
-*origem* de uma consulta — o que não é transformar dado. A regra continua:
+*origem* de uma consulta, o que não é transformar dado. A regra continua:
 transformação mora em SQL, versionada. Dentro do `.pbix` ela ficaria trancada
 num binário.
 
 ### O filtro duplo do SLA
 
 As medidas de prazo filtram `eh_entregue` **e** dependem de `dias_entrega` não
-vazio. `AVERAGE` e `COUNT` já ignoram vazio — o que resolve os 8 itens marcados
-`delivered` sem data —, mas engoliriam os **7 itens de pedidos cancelados que
+vazio. `AVERAGE` e `COUNT` já ignoram vazio (o que resolve os 8 itens marcados
+`delivered` sem data), mas engoliriam os **7 itens de pedidos cancelados que
 têm data de entrega**. Sem o filtro duplo, a base dá 110.196 em vez de 110.189 e
 o atraso dá 7.265 em vez de 7.264: diferença pequena o bastante para ninguém
 conferir, que é o que a torna perigosa.
 
 ### De `.pbix` para PBIP: o relatório vira texto
 
-O `.pbix` é um ZIP com o modelo compilado dentro. O git guarda, mas não lê — e
+O `.pbix` é um ZIP com o modelo compilado dentro. O git guarda, mas não lê, e
 cada salvar entra inteiro no histórico. O **PBIP** (Power BI Project) é o mesmo
 relatório como pasta de texto: um `visual.json` por visual, o modelo em TMDL.
 Dá para revisar num diff, e dá para escrever direto no arquivo.
@@ -132,8 +132,8 @@ o mesmo caminho que os CSVs brutos já seguiam.
 ### Publicando uma versão nova do `.pbix`
 
 Quando o painel mudar, gere o binário a partir do `.pbip`: *Arquivo → Salvar
-como → Procurar*, e troque o campo **Tipo** para `Arquivo do Power BI (*.pbix)`
-— ele vem preenchido com `.pbip`, e salvar sem trocar só reescreve o projeto.
+como → Procurar*, e troque o campo **Tipo** para `Arquivo do Power BI (*.pbix)`.
+Ele vem preenchido com `.pbip`, e salvar sem trocar só reescreve o projeto.
 
 Com a mudança do PBIP já commitada e enviada, publique um Release novo e troque
 o número da versão no link deste documento e do README:
@@ -149,6 +149,8 @@ tag aponta para o commit do PBIP que gerou aquele binário.
 
 ## Página Visão Geral
 
+![Página Visão Geral](img/visao-geral.png)
+
 Cinco KPIs, receita e prazo médio de entrega por mês, o funil de status e o
 bloco de SLA. Recorte de **jan/2017 a ago/2018**.
 
@@ -156,12 +158,12 @@ bloco de SLA. Recorte de **jan/2017 a ago/2018**.
 
 A série começa em set/2016, mas nov/2016 não tem pedido nenhum e set/2018 tem
 um item. Num gráfico de linha isso desenha um colapso do negócio que nunca
-aconteceu. O painel filtra **2017-01 a 2018-08** — 349 itens e R$ 51.820,29
+aconteceu. O painel filtra **2017-01 a 2018-08**, deixando 349 itens e R$ 51.820,29
 fora, ou 0,33% da receita.
 
 O filtro é de **página**, não de visual: filtrar só o gráfico deixaria os
 cartões somando o dataset inteiro, e o KPI não fecharia com a linha logo
-abaixo. E é por **intervalo de datas**, não por lista de meses marcados —
+abaixo. E é por **intervalo de datas**, não por lista de meses marcados:
 critério, não lista digitada, pelo mesmo motivo que o `eh_mes_pleno` do
 `sql/07` é calculado.
 
@@ -173,7 +175,7 @@ quando.
 
 O Power BI ordena um gráfico pela medida por padrão. Numa série temporal isso
 transforma a linha num ranking: a curva desce sempre, e a queda é artefato da
-ordenação, não do negócio — número certo, gráfico mentindo.
+ordenação, não do negócio: número certo, gráfico mentindo.
 
 Os dois gráficos ordenam pela coluna `ano_mes`, ascendente. Ela é `CHAR(7)` no
 formato `'2017-05'` justamente para que ordem alfabética e ordem cronológica
@@ -187,21 +189,23 @@ Três defeitos apareceram nesta página, e nenhum deles é estético:
 | Sintoma | Causa |
 |---|---|
 | `$ 15.683.706,74` | o botão de moeda grava o cifrão americano; símbolo é literal na máscara, e literal não se traduz |
-| `R$ 15,683,706.74` | a máscara é escrita na convenção invariante e traduzida ao desenhar — a localidade dessa tradução estava em `Automático` e resolvia para `en-US` |
+| `R$ 15,683,706.74` | a máscara é escrita na convenção invariante e traduzida ao desenhar, e a localidade dessa tradução estava em `Automático` e resolvia para `en-US` |
 | `98 mil` | o cartão tem unidade de exibição própria, que vence a formatação da medida |
 
 Os três produzem números que *parecem* certos. O primeiro e o terceiro são
 corrigidos no arquivo versionado (`formatString` no TMDL, `labelDisplayUnits`
 no `visual.json`); o segundo é configuração da instalação e precisa ser
-repetido em cada máquina — ver [Duas configurações por
-máquina](#duas-configurações-por-máquina).
+repetido em cada máquina (ver [Duas configurações por
+máquina](#duas-configurações-por-máquina)).
 
 ---
 
 ## Página Produtos
 
+![Página Produtos](img/produtos.png)
+
 Curva ABC das categorias, o peso do frete e a tabela completa das 74
-categorias. Mesmo recorte de período da Visão Geral — o filtro é **copiado**
+categorias. Mesmo recorte de período da Visão Geral. O filtro é **copiado**
 do `page.json` da outra página, não reescrito: duas versões do mesmo recorte
 podem divergir, e um painel que discorda de si mesmo não tem conserto de
 confiança.
@@ -218,7 +222,7 @@ top 18 categorias ....  ~80%      de um total de 74
 ```
 
 São precisas 18 categorias para chegar a 80%. Não existe carro-chefe neste
-marketplace, e um gráfico de barras sozinho nunca diria isso — por isso a
+marketplace, e um gráfico de barras sozinho nunca diria isso. Por isso a
 tabela completa fica embaixo, com o `% Acumulado` linha a linha.
 
 ### A armadilha da direção do filtro
@@ -240,7 +244,7 @@ CALCULATE (
 
 Num modelo estrela o filtro corre **da dimensão para a fato, nunca de volta**.
 A versão ingênua ignora o filtro de período da página, o de status e qualquer
-clique num visual — e hoje daria `74`, que é o número certo, porque no recorte
+clique num visual, e hoje daria `74`, que é o número certo, porque no recorte
 atual todas as categorias venderam. Bastaria filtrar um mês para ela dizer 74
 onde venderam 50. `fato_vendas` como argumento de filtro é o que empurra o
 contexto de volta.
@@ -265,6 +269,8 @@ colunas distintas. Com um único `valor_total` gravado, ela seria impossível.
 ---
 
 ## Página Clientes
+
+![Página Clientes](img/clientes.png)
 
 Quem compra, onde está e em quanto tempo recebe.
 
@@ -309,8 +315,9 @@ CALCULATE (
 
 O `CALCULATE` de dentro faz **transição de contexto**: para cada cliente da
 iteração, recalcula quantos pedidos distintos ele tem naquele contexto. A
-coluna da dimensão continua útil para outra coisa — **segmentar** novos contra
-recorrentes num slicer, onde ignorar o período é o comportamento desejado.
+coluna da dimensão continua na MART, mas fora do painel: um slicer com ela
+segmentaria a página por uma definição de "recorrente" diferente da que o
+cartão ao lado usa.
 
 ### A promessa de prazo dá pouca margem onde a entrega é longa
 
@@ -335,7 +342,7 @@ Cumprir prazo inflado não é pontualidade, e o inverso também vale: o atraso d
 AL é em parte uma promessa curta demais para o destino.
 
 > **Ressalva estatística:** as três piores posições do gráfico são estados de
-> volume mínimo — RR tem 45 itens entregues, AP tem 81, AM tem 163. A média é
+> volume mínimo: RR tem 45 itens entregues, AP tem 81, AM tem 163. A média é
 > real, mas apoiada em pouca observação. Alagoas, com 426, é o primeiro em que
 > o número tem peso.
 
